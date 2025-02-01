@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Button } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useState, useEffect } from "react";
 import { Audio } from "expo-av";
@@ -10,9 +10,7 @@ export default function MeditationPlayerScreen() {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
-    null
-  );
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
 
   const audioMapping: { [key: string]: any } = {
     "1": require("../../assets/audio/calm.mp3"),
@@ -23,8 +21,7 @@ export default function MeditationPlayerScreen() {
   async function loadAudio() {
     const meditationId = Array.isArray(id) ? id[0] : id;
     const audioFile =
-      audioMapping[meditationId] ||
-      require("../../assets/audio/meditation.mp3");
+      audioMapping[meditationId] || require("../../assets/audio/meditation.mp3");
     const { sound } = await Audio.Sound.createAsync(audioFile, {
       shouldPlay: true,
     });
@@ -119,16 +116,24 @@ export default function MeditationPlayerScreen() {
       <Text style={styles.description}>Meditation ID: {id}</Text>
       <Text style={styles.description}>Time: {formatTime(timeElapsed)}</Text>
       <View style={styles.buttonContainer}>
-        <Button
-          title={isPlaying ? "Pause" : "Play"}
-          onPress={handlePlayPause}
-        />
+        <TouchableOpacity style={styles.longButton} onPress={handlePlayPause}>
+          <Text style={styles.longButtonText}>
+            {isPlaying ? "Pause" : "Play"}
+          </Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="End Session" onPress={handleEndSession} />
+        <TouchableOpacity style={styles.longButton} onPress={handleEndSession}>
+          <Text style={styles.longButtonText}>End Session</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="Go Back" onPress={() => router.back()} />
+        <TouchableOpacity
+          style={styles.longButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.longButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -137,26 +142,37 @@ export default function MeditationPlayerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#f9f9f9",
     padding: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 10,
+    color: "#333",
   },
   description: {
     fontSize: 16,
     marginBottom: 20,
-  },
-  timer: {
-    fontSize: 18,
-    marginBottom: 20,
+    color: "#555",
   },
   buttonContainer: {
     marginVertical: 10,
     width: "80%",
+  },
+  longButton: {
+    backgroundColor: "#4E9F3D",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    width: "100%",
+    alignItems: "center",
+  },
+  longButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
