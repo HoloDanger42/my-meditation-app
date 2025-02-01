@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 
-const RootLayout = () => {
+const MeditationsLayout = () => {
   return <Stack></Stack>;
 };
 
-export default RootLayout;
+export default MeditationsLayout;
