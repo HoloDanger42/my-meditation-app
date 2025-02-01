@@ -15,6 +15,10 @@ export default function HomeScreen() {
         onPress={() => router.push("./meditations")}
       />
       <Button title="Settings" onPress={() => router.push("./settings")} />
+      <Button
+        title="Session History"
+        onPress={() => router.push("./history")}
+      />
     </View>
   );
 }
