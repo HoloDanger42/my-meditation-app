@@ -12,16 +12,26 @@ export default function MeditationListScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Meditation List</Text>
-      {meditations.map((meditation) => (
+      <View style={styles.content}>
+        <Text style={styles.title}>Meditation List</Text>
+        {meditations.map((meditation) => (
+          <TouchableOpacity
+            key={meditation.id}
+            style={styles.meditationItem}
+            onPress={() => router.push(`/meditations/${meditation.id}`)}
+          >
+            <Text style={styles.meditationText}>{meditation.title}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={styles.bottomButton}>
         <TouchableOpacity
-          key={meditation.id}
-          style={styles.meditationItem}
-          onPress={() => router.push(`/meditations/${meditation.id}`)}
+          style={styles.longButton}
+          onPress={() => router.back()}
         >
-          <Text style={styles.meditationText}>{meditation.title}</Text>
+          <Text style={styles.longButtonText}>Go Back</Text>
         </TouchableOpacity>
-      ))}
+      </View>
     </View>
   );
 }
@@ -31,6 +41,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     padding: 20,
+  },
+  content: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -44,5 +57,22 @@ const styles = StyleSheet.create({
   },
   meditationText: {
     fontSize: 18,
+  },
+  bottomButton: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  longButton: {
+    backgroundColor: "#4E9F3D",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    width: "80%",
+    alignItems: "center",
+  },
+  longButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

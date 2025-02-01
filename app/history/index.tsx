@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, Button } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -38,17 +44,26 @@ export default function SessionHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Session History</Text>
-      <FlatList
-        data={sessions}
-        keyExtractor={(item) => item.meditationId.toString()}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No sessions recorded</Text>
-        }
-      />
-      <Button title="Go Back" onPress={() => router.back()} />
+      <View style={styles.content}>
+        <Text style={styles.title}>Session History</Text>
+        <FlatList
+          data={sessions}
+          keyExtractor={(item) => item.meditationId.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No sessions recorded</Text>
+          }
+        />
+      </View>
+      <View style={styles.bottomButton}>
+        <TouchableOpacity
+          style={styles.longButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.longButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -58,7 +73,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: "#fff",
-    alignItems: "center",
+  },
+  content: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -83,5 +100,22 @@ const styles = StyleSheet.create({
     color: "#888",
     textAlign: "center",
     marginTop: 20,
+  },
+  bottomButton: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  longButton: {
+    backgroundColor: "#4E9F3D",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    width: "80%",
+    alignItems: "center",
+  },
+  longButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

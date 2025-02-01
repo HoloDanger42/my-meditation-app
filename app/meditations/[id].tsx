@@ -14,11 +14,20 @@ export default function MeditationPlayerScreen() {
     null
   );
 
+  const audioMapping: { [key: string]: any } = {
+    "1": require("../../assets/audio/calm.mp3"),
+    "2": require("../../assets/audio/relaxing_breath.mp3"),
+    "3": require("../../assets/audio/gentle_sleep.mp3"),
+  };
+
   async function loadAudio() {
-    const { sound } = await Audio.Sound.createAsync(
-      require("../../assets/audio/meditation.mp3"),
-      { shouldPlay: true }
-    );
+    const meditationId = Array.isArray(id) ? id[0] : id;
+    const audioFile =
+      audioMapping[meditationId] ||
+      require("../../assets/audio/meditation.mp3");
+    const { sound } = await Audio.Sound.createAsync(audioFile, {
+      shouldPlay: true,
+    });
     setSound(sound);
     setIsPlaying(true);
     startTimer();
@@ -109,9 +118,18 @@ export default function MeditationPlayerScreen() {
       <Text style={styles.title}>Meditation Player</Text>
       <Text style={styles.description}>Meditation ID: {id}</Text>
       <Text style={styles.description}>Time: {formatTime(timeElapsed)}</Text>
-      <Button title={isPlaying ? "Pause" : "Play"} onPress={handlePlayPause} />
-      <Button title="End Session" onPress={handleEndSession} />
-      <Button title="Go Back" onPress={() => router.back()} />
+      <View style={styles.buttonContainer}>
+        <Button
+          title={isPlaying ? "Pause" : "Play"}
+          onPress={handlePlayPause}
+        />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="End Session" onPress={handleEndSession} />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Go Back" onPress={() => router.back()} />
+      </View>
     </View>
   );
 }
@@ -136,5 +154,9 @@ const styles = StyleSheet.create({
   timer: {
     fontSize: 18,
     marginBottom: 20,
+  },
+  buttonContainer: {
+    marginVertical: 10,
+    width: "80%",
   },
 });
