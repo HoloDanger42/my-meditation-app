@@ -1,37 +1,48 @@
+import React from "react";
 import { Text, View, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function MeditationListScreen() {
   const router = useRouter();
 
   const meditations = [
-    { id: 1, title: "Calm Mind" },
-    { id: 2, title: "Relaxing Breath" },
-    { id: 3, title: "Gentle Sleep" },
+    { id: 1, title: "Calm Mind", description: "Reduce anxiety and find peace" },
+    {
+      id: 2,
+      title: "Relaxing Breath",
+      description: "Slow breathing for relaxation",
+    },
+    {
+      id: 3,
+      title: "Gentle Sleep",
+      description: "Prepare your mind for restful sleep",
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Meditation List</Text>
-        {meditations.map((meditation) => (
-          <TouchableOpacity
-            key={meditation.id}
-            style={styles.meditationItem}
-            onPress={() => router.push(`/meditations/${meditation.id}`)}
-          >
-            <Text style={styles.meditationText}>{meditation.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={styles.bottomButton}>
+      <Text style={styles.title}>Meditations</Text>
+      <Text style={styles.subtitle}>
+        Select a meditation to begin your practice
+      </Text>
+
+      {meditations.map((meditation) => (
         <TouchableOpacity
-          style={styles.longButton}
-          onPress={() => router.back()}
+          key={meditation.id}
+          style={styles.meditationItem}
+          onPress={() => router.push(`/meditations/${meditation.id}`)}
         >
-          <Text style={styles.longButtonText}>Go Back</Text>
+          <View style={styles.meditationIcon}>
+            <Ionicons name="leaf-outline" size={24} color="#4E9F3D" />
+          </View>
+          <View style={styles.meditationContent}>
+            <Text style={styles.meditationTitle}>{meditation.title}</Text>
+            <Text style={styles.meditationDesc}>{meditation.description}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#999" />
         </TouchableOpacity>
-      </View>
+      ))}
     </View>
   );
 }
@@ -39,40 +50,49 @@ export default function MeditationListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 40,
+    paddingHorizontal: 20,
     backgroundColor: "#fff",
-    padding: 20,
-  },
-  content: {
-    flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#555",
     marginBottom: 20,
   },
   meditationItem: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    backgroundColor: "#f8f8f8",
+    marginBottom: 15,
+    borderRadius: 10,
   },
-  meditationText: {
-    fontSize: 18,
-  },
-  bottomButton: {
+  meditationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f0f8f0",
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginRight: 10,
   },
-  longButton: {
-    backgroundColor: "#4E9F3D",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    width: "80%",
-    alignItems: "center",
+  meditationContent: {
+    flex: 1,
   },
-  longButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+  meditationTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+  },
+  meditationDesc: {
+    fontSize: 14,
+    color: "#777",
+    marginTop: 4,
   },
 });

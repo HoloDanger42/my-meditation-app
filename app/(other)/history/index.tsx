@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Session {
+  id: number;
   meditationId: string;
   duration: number;
   timestamp: string;
@@ -48,7 +49,7 @@ export default function SessionHistoryScreen() {
         <Text style={styles.title}>Session History</Text>
         <FlatList
           data={sessions}
-          keyExtractor={(item) => item.meditationId.toString()}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={

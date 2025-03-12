@@ -160,11 +160,11 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginVertical: 10,
-    width: "80%",
+    width: "75%",
   },
   longButton: {
     backgroundColor: "#4E9F3D",
-    paddingVertical: 15,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
     width: "100%",
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   longButtonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "bold",
   },
 });
