@@ -22,6 +22,12 @@ export default function OtherScreen() {
       >
         <Text style={styles.buttonText}>Settings</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => router.push("/statistics")}
+      >
+        <Text style={styles.buttonText}>Statistics</Text>
+      </TouchableOpacity>
     </View>
   );
 }

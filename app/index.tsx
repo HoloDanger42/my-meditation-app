@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Text,
   View,
@@ -8,9 +8,78 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+interface MoodEntry {
+  id: number;
+  mood: {
+    id: number;
+    name: string;
+    icon: string;
+    color: string;
+  };
+  intensity: number;
+  notes: string;
+  timestamp: string;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [latestMood, setLatestMood] = useState<MoodEntry | null>(null);
+
+  // Fetch latest mood entry when component mounts
+  useEffect(() => {
+    const fetchLatestMood = async () => {
+      try {
+        const entriesJson = await AsyncStorage.getItem("mood_entries");
+        if (entriesJson) {
+          const entries = JSON.parse(entriesJson);
+          if (entries.length > 0) {
+            setLatestMood(entries[0]); // First entry is the latest
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch mood data:", error);
+      }
+    };
+
+    fetchLatestMood();
+  }, []);
+
+  // Render mood display based on latest entry
+  const renderMoodDisplay = () => {
+    if (!latestMood) {
+      return <Text style={styles.summaryText}>How are you feeling today?</Text>;
+    }
+
+    return (
+      <View style={styles.currentMoodContainer}>
+        <View
+          style={[
+            styles.moodIconSmall,
+            { backgroundColor: latestMood.mood.color + "30" },
+          ]}
+        >
+          <Ionicons
+            name={latestMood.mood.icon as any}
+            size={20}
+            color={latestMood.mood.color}
+          />
+        </View>
+        <View style={styles.moodDetails}>
+          <Text style={styles.moodName}>
+            {latestMood.mood.name} ({latestMood.intensity}/5)
+          </Text>
+          <Text style={styles.moodTime}>
+            {new Date(latestMood.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -25,12 +94,14 @@ export default function HomeScreen() {
       <View style={styles.summaryCard}>
         <Text style={styles.cardTitle}>Today's Wellness</Text>
         <View style={styles.moodSummary}>
-          <Text style={styles.summaryText}>How are you feeling today?</Text>
+          {renderMoodDisplay()}
           <TouchableOpacity
             style={styles.logMoodButton}
-            onPress={() => router.push("/mood" as any)}
+            onPress={() => router.push("/mood")}
           >
-            <Text style={styles.logMoodText}>Log Mood</Text>
+            <Text style={styles.logMoodText}>
+              {latestMood ? "Update Mood" : "Log Mood"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -52,7 +123,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.actionItem}
-              onPress={() => router.push("/journal/new" as any)}
+              onPress={() => router.push("/journal/new")}
             >
               <View style={styles.actionIcon}>
                 <FontAwesome name="pencil" size={28} color="#4E9F3D" />
@@ -62,7 +133,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.actionItem}
-              onPress={() => router.push("/tools/breathing" as any)}
+              onPress={() => router.push("/tools/breathing")}
             >
               <View style={styles.actionIcon}>
                 <Ionicons name="medical-outline" size={28} color="#4E9F3D" />
@@ -72,12 +143,22 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.actionItem}
-              onPress={() => router.push("/history")}
+              onPress={() => router.push("/(other)/history")}
             >
               <View style={styles.actionIcon}>
                 <Ionicons name="analytics-outline" size={28} color="#4E9F3D" />
               </View>
               <Text style={styles.actionText}>Progress</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => router.push("/(other)/statistics")}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name="analytics-outline" size={28} color="#4E9F3D" />
+              </View>
+              <Text style={styles.actionText}>Statistics</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -127,7 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingTop: 20,
     paddingBottom: 10,
     backgroundColor: "white",
   },
@@ -147,6 +228,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     color: "#555",
+    marginBottom: 15,
   },
   moodSummary: {
     flexDirection: "row",
@@ -254,5 +336,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#777",
     marginTop: 5,
+  },
+  currentMoodContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  moodIconSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f0f8f0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  moodDetails: {
+    flex: 1,
+  },
+  moodName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+  },
+  moodTime: {
+    fontSize: 12,
+    color: "#777",
   },
 });
