@@ -9,6 +9,8 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 interface MoodEntry {
   id: number;
@@ -26,6 +28,7 @@ interface MoodEntry {
 export default function HomeScreen() {
   const router = useRouter();
   const [latestMood, setLatestMood] = useState<MoodEntry | null>(null);
+  const { theme, isDark } = useTheme();
 
   // Fetch latest mood entry when component mounts
   useEffect(() => {
@@ -81,12 +84,179 @@ export default function HomeScreen() {
     );
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 5,
+      backgroundColor: theme.card,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    scrollContent: {
+      paddingBottom: 20,
+    },
+    summaryCard: {
+      backgroundColor: theme.card,
+      padding: 20,
+    },
+    cardTitle: {
+      fontSize: 18,
+      color: theme.textSecondary,
+      marginBottom: 15,
+    },
+    moodSummary: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    summaryText: {
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    logMoodButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 8,
+      paddingHorizontal: 15,
+      borderRadius: 20,
+    },
+    logMoodText: {
+      color: "white",
+      fontWeight: "500",
+    },
+    sectionContainer: {
+      padding: 20,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      color: theme.text,
+      marginBottom: 15,
+      fontWeight: "600",
+    },
+    actionsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+    },
+    actionItem: {
+      width: "48%",
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 15,
+      alignItems: "center",
+      marginBottom: 15,
+    },
+    actionIcon: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: theme.accentLight,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    actionText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: theme.text,
+    },
+    tipCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 20,
+      marginHorizontal: 20,
+      marginBottom: 20,
+    },
+    tipHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    tipTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      marginLeft: 8,
+    },
+    tipText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      lineHeight: 20,
+    },
+    streakCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 20,
+      marginHorizontal: 20,
+    },
+    streakTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 15,
+    },
+    streakInfo: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    streakItem: {
+      alignItems: "center",
+    },
+    streakCount: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: theme.accent,
+    },
+    streakLabel: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 5,
+    },
+    currentMoodContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    moodIconSmall: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.accentLight,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 10,
+    },
+    moodDetails: {
+      flex: 1,
+    },
+    moodName: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: theme.text,
+    },
+    moodTime: {
+      fontSize: 12,
+      color: theme.textTertiary,
+    },
+  });
+
   return (
     <View style={styles.container}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <Text style={styles.title}>Mental Wellness</Text>
         <TouchableOpacity onPress={() => router.push("/(other)/settings")}>
-          <Ionicons name="settings-outline" size={24} color="#333" />
+          <Ionicons name="settings-outline" size={24} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -116,7 +286,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/meditations")}
             >
               <View style={styles.actionIcon}>
-                <Ionicons name="leaf-outline" size={28} color="#4E9F3D" />
+                <Ionicons name="leaf-outline" size={28} color={theme.accent} />
               </View>
               <Text style={styles.actionText}>Meditate</Text>
             </TouchableOpacity>
@@ -126,7 +296,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/journal/new")}
             >
               <View style={styles.actionIcon}>
-                <FontAwesome name="pencil" size={28} color="#4E9F3D" />
+                <FontAwesome name="pencil" size={28} color={theme.accent} />
               </View>
               <Text style={styles.actionText}>Journal</Text>
             </TouchableOpacity>
@@ -136,7 +306,11 @@ export default function HomeScreen() {
               onPress={() => router.push("/tools/breathing")}
             >
               <View style={styles.actionIcon}>
-                <Ionicons name="medical-outline" size={28} color="#4E9F3D" />
+                <Ionicons
+                  name="medical-outline"
+                  size={28}
+                  color={theme.accent}
+                />
               </View>
               <Text style={styles.actionText}>Breathing</Text>
             </TouchableOpacity>
@@ -146,7 +320,11 @@ export default function HomeScreen() {
               onPress={() => router.push("/(other)/history")}
             >
               <View style={styles.actionIcon}>
-                <Ionicons name="analytics-outline" size={28} color="#4E9F3D" />
+                <Ionicons
+                  name="analytics-outline"
+                  size={28}
+                  color={theme.accent}
+                />
               </View>
               <Text style={styles.actionText}>Progress</Text>
             </TouchableOpacity>
@@ -156,7 +334,11 @@ export default function HomeScreen() {
               onPress={() => router.push("/(other)/statistics")}
             >
               <View style={styles.actionIcon}>
-                <Ionicons name="analytics-outline" size={28} color="#4E9F3D" />
+                <Ionicons
+                  name="analytics-outline"
+                  size={28}
+                  color={theme.accent}
+                />
               </View>
               <Text style={styles.actionText}>Statistics</Text>
             </TouchableOpacity>
@@ -197,170 +379,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: "white",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  summaryCard: {
-    backgroundColor: "white",
-    padding: 20,
-    marginBottom: 15,
-  },
-  cardTitle: {
-    fontSize: 18,
-    color: "#555",
-    marginBottom: 15,
-  },
-  moodSummary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  summaryText: {
-    fontSize: 16,
-    color: "#555",
-  },
-  logMoodButton: {
-    backgroundColor: "#4E9F3D",
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  logMoodText: {
-    color: "white",
-    fontWeight: "500",
-  },
-  sectionContainer: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    color: "#333",
-    marginBottom: 15,
-    fontWeight: "600",
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  actionItem: {
-    width: "48%",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  actionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#f0f8f0",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-  },
-  tipCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  tipHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginLeft: 8,
-  },
-  tipText: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 20,
-  },
-  streakCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 20,
-  },
-  streakTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 15,
-  },
-  streakInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  streakItem: {
-    alignItems: "center",
-  },
-  streakCount: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#4E9F3D",
-  },
-  streakLabel: {
-    fontSize: 12,
-    color: "#777",
-    marginTop: 5,
-  },
-  currentMoodContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  moodIconSmall: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#f0f8f0",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  moodDetails: {
-    flex: 1,
-  },
-  moodName: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-  },
-  moodTime: {
-    fontSize: 12,
-    color: "#777",
-  },
-});

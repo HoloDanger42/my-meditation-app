@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 60,
     paddingBottom: 15,
     backgroundColor: "white",
     borderBottomWidth: 1,

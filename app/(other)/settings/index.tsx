@@ -2,11 +2,13 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
+  const { isDark, setDarkMode, theme } = useTheme();
 
   const settingsSections = [
     {
@@ -23,8 +25,8 @@ export default function SettingsScreen() {
           id: "darkMode",
           title: "Dark Mode",
           type: "switch",
-          value: darkModeEnabled,
-          onValueChange: setDarkModeEnabled,
+          value: isDark,
+          onValueChange: setDarkMode,
         },
       ],
     },
@@ -68,11 +70,13 @@ export default function SettingsScreen() {
     if (item.type === "switch") {
       return (
         <View key={item.id} style={styles.settingItem}>
-          <Text style={styles.settingText}>{item.title}</Text>
+          <Text style={[styles.settingText, { color: theme.text }]}>
+            {item.title}
+          </Text>
           <Switch
             value={item.value}
             onValueChange={item.onValueChange}
-            trackColor={{ false: "#ddd", true: "#4E9F3D" }}
+            trackColor={{ false: "#ddd", true: theme.accent }}
             thumbColor={"#fff"}
           />
         </View>
@@ -80,26 +84,89 @@ export default function SettingsScreen() {
     } else {
       return (
         <TouchableOpacity key={item.id} style={styles.settingItem}>
-          <Ionicons name={item.icon} size={22} color="#4E9F3D" />
-          <Text style={[styles.settingText, { marginLeft: 10 }]}>
+          <Ionicons name={item.icon} size={22} color={theme.accent} />
+          <Text
+            style={[styles.settingText, { marginLeft: 10, color: theme.text }]}
+          >
             {item.title}
           </Text>
           <Ionicons
             style={styles.chevron}
             name="chevron-forward"
             size={20}
-            color="#999"
+            color={theme.textTertiary}
           />
         </TouchableOpacity>
       );
     }
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 20,
+      backgroundColor: theme.card,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    section: {
+      marginTop: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.textSecondary,
+      paddingHorizontal: 20,
+      marginBottom: 10,
+    },
+    sectionContent: {
+      backgroundColor: theme.card,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    settingItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.cardBorder,
+    },
+    settingText: {
+      flex: 1,
+      fontSize: 16,
+      color: theme.text,
+    },
+    chevron: {
+      marginLeft: 10,
+    },
+    footer: {
+      marginTop: 30,
+      alignItems: "center",
+    },
+    version: {
+      fontSize: 14,
+      color: theme.textTertiary,
+    },
+  });
+
   return (
     <View style={styles.container}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>
         <View style={{ width: 24 }} />
@@ -120,63 +187,3 @@ export default function SettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    backgroundColor: "white",
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#555",
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  sectionContent: {
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#eee",
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  settingText: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-  },
-  chevron: {
-    marginLeft: 10,
-  },
-  footer: {
-    marginTop: 30,
-    alignItems: "center",
-  },
-  version: {
-    fontSize: 14,
-    color: "#999",
-  },
-});

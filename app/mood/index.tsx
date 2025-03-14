@@ -11,6 +11,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useTheme } from "../../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 // Define the mood options
 const moodOptions = [
@@ -29,6 +31,7 @@ export default function MoodScreen() {
   const [intensity, setIntensity] = useState<number>(3);
   const [notes, setNotes] = useState<string>("");
   const router = useRouter();
+  const { theme, isDark } = useTheme();
 
   const saveMoodEntry = async () => {
     if (selectedMood === null) {
@@ -65,8 +68,134 @@ export default function MoodScreen() {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: 60,
+      paddingHorizontal: 20,
+      backgroundColor: theme.background,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "bold",
+      marginBottom: 10,
+      color: theme.text,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      marginBottom: 25,
+    },
+    moodGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      marginBottom: 30,
+    },
+    moodItem: {
+      width: "48%",
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 15,
+      alignItems: "center",
+      marginBottom: 15,
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    moodIcon: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: theme.accentLight,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    moodName: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: theme.text,
+    },
+    section: {
+      marginBottom: 25,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 5,
+    },
+    sectionSubtitle: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 15,
+    },
+    intensityContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 10,
+    },
+    intensityScale: {
+      flexDirection: "row",
+      flex: 1,
+      justifyContent: "space-between",
+      marginHorizontal: 15,
+    },
+    intensityDot: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.cardBorder,
+    },
+    intensityLabel: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      width: 50,
+    },
+    notesInput: {
+      height: 120,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 8,
+      padding: 15,
+      fontSize: 16,
+      backgroundColor: theme.card,
+      color: theme.text,
+    },
+    saveButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 15,
+      borderRadius: 10,
+      alignItems: "center",
+      marginTop: 10,
+      marginBottom: 20,
+    },
+    saveButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    historyLinkContainer: {
+      marginTop: 10,
+      marginBottom: 80,
+      alignItems: "center",
+    },
+    historyLink: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    historyLinkText: {
+      color: theme.accent,
+      fontSize: 16,
+      fontWeight: "500",
+      marginRight: 5,
+    },
+  });
+
   return (
     <ScrollView style={styles.container}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Text style={styles.title}>How are you feeling?</Text>
       <Text style={styles.subtitle}>
         Select the mood that best describes how you feel right now
@@ -131,6 +260,7 @@ export default function MoodScreen() {
           style={styles.notesInput}
           multiline
           placeholder="What's on your mind?"
+          placeholderTextColor={theme.textTertiary}
           value={notes}
           onChangeText={setNotes}
           textAlignVertical="top"
@@ -153,127 +283,3 @@ export default function MoodScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 25,
-  },
-  moodGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 30,
-  },
-  moodItem: {
-    width: "48%",
-    backgroundColor: "#f8f8f8",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  moodIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#f0f8f0",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  moodName: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-  },
-  section: {
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 5,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 15,
-  },
-  intensityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-  },
-  intensityScale: {
-    flexDirection: "row",
-    flex: 1,
-    justifyContent: "space-between",
-    marginHorizontal: 15,
-  },
-  intensityDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#ddd",
-  },
-  intensityLabel: {
-    fontSize: 14,
-    color: "#555",
-    width: 50,
-  },
-  notesInput: {
-    height: 120,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    backgroundColor: "#f9f9f9",
-  },
-  saveButton: {
-    backgroundColor: "#4E9F3D",
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  saveButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  historyLinkContainer: {
-    marginTop: 10,
-    marginBottom: 60,
-    alignItems: "center",
-  },
-  historyLink: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  historyLinkText: {
-    color: "#4E9F3D",
-    fontSize: 16,
-    fontWeight: "500",
-    marginRight: 5,
-  },
-});

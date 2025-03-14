@@ -42,7 +42,7 @@ export default function ToolsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 60,
     paddingHorizontal: 20,
     backgroundColor: "#fff",
   },
