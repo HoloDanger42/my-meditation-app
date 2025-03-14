@@ -5,10 +5,11 @@ import {
   StyleSheet,
   Animated,
   TouchableOpacity,
-  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 export default function BreathingExerciseScreen() {
   const [phase, setPhase] = useState("inhale");
@@ -21,6 +22,7 @@ export default function BreathingExerciseScreen() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
+  const { theme, isDark } = useTheme();
 
   // Animation sequences
   const startBreathing = () => {
@@ -132,12 +134,18 @@ export default function BreathingExerciseScreen() {
       animation.stop();
     }
 
-    animatedValue.setValue(1);
+    const resetAnim = Animated.timing(animatedValue, {
+      toValue: 1,
+      duration: 100, // Short duration
+      useNativeDriver: true,
+    });
 
-    setIsActive(false);
-    setPhase("inhale");
-    setCounter(4);
-    setCycles(0);
+    resetAnim.start(() => {
+      setIsActive(false);
+      setPhase("inhale");
+      setCounter(4);
+      setCycles(0);
+    });
   };
 
   useEffect(() => {
@@ -146,16 +154,95 @@ export default function BreathingExerciseScreen() {
     }
   }, [phase]);
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 15,
+      backgroundColor: theme.card,
+    },
+    backButton: {
+      padding: 8,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    content: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20,
+    },
+    instruction: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: theme.text,
+      marginBottom: 40,
+    },
+    circleContainer: {
+      marginVertical: 30,
+    },
+    breathCircle: {
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+      backgroundColor: theme.accentLight,
+      borderWidth: 4,
+      borderColor: theme.accent,
+      alignSelf: "center",
+    },
+    counter: {
+      fontSize: 48,
+      fontWeight: "bold",
+      color: theme.text,
+      marginTop: 30,
+    },
+    cycleCount: {
+      fontSize: 18,
+      color: theme.textSecondary,
+      marginTop: 15,
+      marginBottom: 30,
+    },
+    button: {
+      paddingVertical: 15,
+      paddingHorizontal: 25,
+      borderRadius: 30,
+      marginTop: 20,
+      minWidth: 150,
+      alignItems: "center",
+    },
+    startButton: {
+      backgroundColor: theme.accent,
+    },
+    stopButton: {
+      backgroundColor: "#E74C3C",
+    },
+    buttonText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "#fff",
+    },
+  });
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar style={isDark ? "light" : "dark"} />
 
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.push("/tools")}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Deep Breathing</Text>
         <View style={{ width: 24 }} />
@@ -206,81 +293,3 @@ export default function BreathingExerciseScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-  },
-  backButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  instruction: {
-    fontSize: 22,
-    marginBottom: 30,
-    color: "#4E9F3D",
-    fontWeight: "600",
-  },
-  circleContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 40,
-    height: 200,
-    width: "100%",
-  },
-  breathCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: "#e7f5e1",
-    borderWidth: 3,
-    borderColor: "#4E9F3D",
-  },
-  counter: {
-    fontSize: 40,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 20,
-  },
-  cycleCount: {
-    fontSize: 16,
-    color: "#777",
-    marginBottom: 30,
-  },
-  button: {
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    marginTop: 20,
-  },
-  startButton: {
-    backgroundColor: "#4E9F3D",
-  },
-  stopButton: {
-    backgroundColor: "#FF6B6B",
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-});
