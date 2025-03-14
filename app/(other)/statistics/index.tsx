@@ -11,7 +11,6 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { LineChart, BarChart } from "react-native-chart-kit";
 
 interface MoodEntry {
   id: number;
@@ -124,24 +123,22 @@ export default function StatisticsScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Mood Intensity (Last 7 Days)</Text>
             {moodData.length > 0 ? (
-              <LineChart
-                data={processedMoodData}
-                width={Dimensions.get("window").width - 40}
-                height={220}
-                chartConfig={{
-                  backgroundColor: "#fff",
-                  backgroundGradientFrom: "#fff",
-                  backgroundGradientTo: "#fff",
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(78, 159, 61, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  style: {
-                    borderRadius: 16,
-                  },
-                }}
-                bezier
-                style={styles.chart}
-              />
+              <View style={styles.customChart}>
+                {processedMoodData.datasets[0].data.map((value, index) => (
+                  <View key={index} style={styles.chartItem}>
+                    <View style={styles.barContainer}>
+                      <View
+                        style={[styles.bar, {
+                          height: (value / 5) * 150,
+                          backgroundColor: '#4E9F3D'
+                        }]}
+                      />
+                    </View>
+                    <Text style={styles.barLabel}>{processedMoodData.labels[index]}</Text>
+                    <Text style={styles.barValue}>{value}</Text>
+                  </View>
+                ))}
+              </View>
             ) : (
               <Text style={styles.emptyText}>No mood data available</Text>
             )}
@@ -150,22 +147,41 @@ export default function StatisticsScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Mood Distribution</Text>
             {moodData.length > 0 ? (
-              <BarChart
-                data={getMoodDistributionData()}
-                width={Dimensions.get("window").width - 40}
-                height={220}
-                yAxisLabel=""
-                yAxisSuffix=""
-                chartConfig={{
-                  backgroundColor: "#fff",
-                  backgroundGradientFrom: "#fff",
-                  backgroundGradientTo: "#fff",
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(78, 159, 61, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                }}
-                style={styles.chart}
-              />
+              <>
+                {getMoodDistributionData().labels.length > 1 ? (
+                  <View style={styles.customChart}>
+                    {getMoodDistributionData().labels.map((label, index) => {
+                      const value = getMoodDistributionData().datasets[0].data[index];
+                      const maxValue = Math.max(...getMoodDistributionData().datasets[0].data);
+                      return (
+                        <View key={index} style={styles.distributionItem}>
+                          <Text style={styles.distributionLabel}>
+                            {label.length > 10 ? label.substring(0, 10) + '...' : label}
+                          </Text>
+                          <View style={styles.distributionBarContainer}>
+                            <View
+                              style={[styles.distributionBar, {
+                                width: `${(value / maxValue) * 100}%`,
+                                backgroundColor: getColorForMood(label, moodData),
+                              }]}
+                            />
+                          </View>
+                          <Text style={styles.distributionValue}>{value}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.singleMoodMessage}>
+                    <Text style={styles.infoText}>
+                      You've only recorded "{getMoodDistributionData().labels[0]}" so far.
+                    </Text>
+                    <Text style={styles.infoText}>
+                      Track more moods to see your mood distribution!
+                    </Text>
+                  </View>
+                )}
+              </>
             ) : (
               <Text style={styles.emptyText}>No mood data available</Text>
             )}
@@ -232,6 +248,12 @@ function getJournalEntriesThisWeek(journalData: any[]) {
   }).length;
 }
 
+function getColorForMood(moodName: string, moodData: MoodEntry[]): string {
+  // Find the mood entry with this name to get its color
+  const entry = moodData.find(entry => entry.mood.name === moodName);
+  return entry?.mood.color || '#4E9F3D'; // Default to green if not found
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -274,9 +296,6 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 15,
   },
-  chart: {
-    borderRadius: 16,
-  },
   summaryCard: {
     backgroundColor: "white",
     borderRadius: 12,
@@ -304,5 +323,77 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: "#777",
+  },
+  customChart: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    height: 200,
+    marginTop: 10,
+    paddingBottom: 20,
+  },
+  chartItem: {
+    alignItems: 'center',
+    width: 30,
+  },
+  barContainer: {
+    height: 150,
+    width: 30,
+    justifyContent: 'flex-end',
+  },
+  bar: {
+    width: 20,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  barLabel: {
+    fontSize: 10,
+    marginTop: 5,
+    color: '#555',
+  },
+  barValue: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  distributionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  distributionLabel: {
+    width: 60,
+    fontSize: 12,
+    color: '#555',
+  },
+  distributionBarContainer: {
+    flex: 1,
+    height: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginHorizontal: 10,
+  },
+  distributionBar: {
+    height: '100%',
+    backgroundColor: '#4E9F3D',
+    borderRadius: 10,
+  },
+  distributionValue: {
+    width: 30,
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  singleMoodMessage: {
+    padding: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginVertical: 5,
   },
 });
