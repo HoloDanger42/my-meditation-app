@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { LineChart } from "react-native-chart-kit";
 
 interface MoodEntry {
   id: number;
@@ -26,12 +28,24 @@ interface MoodEntry {
   timestamp: string;
 }
 
+interface MeditationSession {
+  id: number;
+  meditationId: string;
+  duration: number;
+  rating?: number;
+  timestamp: string;
+}
+
 export default function StatisticsScreen() {
   const [moodData, setMoodData] = useState<MoodEntry[]>([]);
   const [journalData, setJournalData] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { theme, isDark } = useTheme();
+  const [meditationSessions, setMeditationSessions] = useState<
+    MeditationSession[]
+  >([]);
+  const [averageRating, setAverageRating] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -50,11 +64,79 @@ export default function StatisticsScreen() {
       if (journalEntriesJson) {
         setJournalData(JSON.parse(journalEntriesJson));
       }
+
+      // Load meditation sessions
+      const meditationSessionsJson = await AsyncStorage.getItem(
+        "meditation_sessions"
+      );
+      if (meditationSessionsJson) {
+        const sessions = JSON.parse(meditationSessionsJson);
+        setMeditationSessions(sessions);
+
+        // Calculate average rating
+        const sessionsWithRatings = sessions.filter(
+          (s: MeditationSession) => s.rating && s.rating > 0
+        );
+        if (sessionsWithRatings.length > 0) {
+          const total = sessionsWithRatings.reduce(
+            (sum: number, s: MeditationSession) => sum + s.rating!,
+            0
+          );
+          setAverageRating(
+            parseFloat((total / sessionsWithRatings.length).toFixed(1))
+          );
+        }
+      }
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getMeditationChartData = () => {
+    if (meditationSessions.length === 0) {
+      return {
+        labels: [],
+        datasets: [{ data: [] }],
+      };
+    }
+
+    // Get the last 7 days of sessions
+    const lastWeekSessions = [...meditationSessions]
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
+      .slice(0, 7)
+      .reverse();
+
+    // Group by day and sum duration
+    const dailyData: { [key: string]: number } = {};
+
+    lastWeekSessions.forEach((session) => {
+      const date = new Date(session.timestamp);
+      const day = `${date.getMonth() + 1}/${date.getDate()}`;
+
+      if (!dailyData[day]) {
+        dailyData[day] = 0;
+      }
+      dailyData[day] += Math.round(session.duration / 60); // Convert to minutes
+    });
+
+    // Create chart data
+    const labels = Object.keys(dailyData);
+    const data = Object.values(dailyData);
+
+    return {
+      labels,
+      datasets: [
+        {
+          data,
+          color: (opacity = 1) => `rgba(78, 159, 61, ${opacity})`,
+        },
+      ],
+    };
   };
 
   // Process mood data into chart format
@@ -352,6 +434,44 @@ export default function StatisticsScreen() {
             )}
           </View>
 
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Meditation Time (Last 7 Days)</Text>
+            {meditationSessions.length > 0 ? (
+              <>
+                <LineChart
+                  data={getMeditationChartData()}
+                  width={Dimensions.get("window").width - 70}
+                  height={180}
+                  chartConfig={{
+                    backgroundGradientFrom: theme.card,
+                    backgroundGradientTo: theme.card,
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(78, 159, 61, ${opacity})`,
+                    labelColor: (opacity = 1) => theme.text,
+                    style: {
+                      borderRadius: 16,
+                    },
+                    propsForDots: {
+                      r: "6",
+                      strokeWidth: "2",
+                      stroke: theme.accent,
+                    },
+                  }}
+                  bezier
+                  style={{
+                    marginTop: 10,
+                    borderRadius: 8,
+                  }}
+                />
+                <Text style={[styles.insightText, { marginTop: 10 }]}>
+                  Minutes of meditation per day
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.emptyText}>No meditation data available</Text>
+            )}
+          </View>
+
           <View style={styles.summaryCard}>
             <Text style={styles.cardTitle}>Insights</Text>
             <Text style={styles.insightText}>
@@ -363,6 +483,19 @@ export default function StatisticsScreen() {
             <Text style={styles.insightText}>
               • Journal entries this week:{" "}
               {getJournalEntriesThisWeek(journalData)}
+            </Text>
+            <Text style={styles.insightText}>
+              • Total meditation sessions: {meditationSessions.length}
+            </Text>
+            <Text style={styles.insightText}>
+              • Average session rating:{" "}
+              {averageRating > 0 ? averageRating : "No ratings"}
+            </Text>
+            <Text style={styles.insightText}>
+              • Total minutes meditated:{" "}
+              {Math.round(
+                meditationSessions.reduce((sum, s) => sum + s.duration, 0) / 60
+              )}
             </Text>
           </View>
         </ScrollView>

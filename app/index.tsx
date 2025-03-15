@@ -11,6 +11,11 @@ import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import {
+  getCurrentStreak,
+  getTotalMeditationSessions,
+  getTotalMeditationMinutes,
+} from "../utils/stats";
 
 interface MoodEntry {
   id: number;
@@ -29,6 +34,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const [latestMood, setLatestMood] = useState<MoodEntry | null>(null);
   const { theme, isDark } = useTheme();
+  const [streak, setStreak] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
+  const [totalMinutes, setTotalMinutes] = useState(0);
 
   // Fetch latest mood entry when component mounts
   useEffect(() => {
@@ -47,6 +55,20 @@ export default function HomeScreen() {
     };
 
     fetchLatestMood();
+  }, []);
+
+  useEffect(() => {
+    async function loadStats() {
+      const currentStreak = await getCurrentStreak();
+      const totalSessions = await getTotalMeditationSessions();
+      const minutes = await getTotalMeditationMinutes();
+
+      setStreak(currentStreak);
+      setSessionCount(totalSessions);
+      setTotalMinutes(minutes);
+    }
+
+    loadStats();
   }, []);
 
   // Render mood display based on latest entry
@@ -362,15 +384,15 @@ export default function HomeScreen() {
           <Text style={styles.streakTitle}>Your Progress</Text>
           <View style={styles.streakInfo}>
             <View style={styles.streakItem}>
-              <Text style={styles.streakCount}>0</Text>
+              <Text style={styles.streakCount}>{streak}</Text>
               <Text style={styles.streakLabel}>Day Streak</Text>
             </View>
             <View style={styles.streakItem}>
-              <Text style={styles.streakCount}>0</Text>
+              <Text style={styles.streakCount}>{sessionCount}</Text>
               <Text style={styles.streakLabel}>Meditations</Text>
             </View>
             <View style={styles.streakItem}>
-              <Text style={styles.streakCount}>0</Text>
+              <Text style={styles.streakCount}>{totalMinutes}</Text>
               <Text style={styles.streakLabel}>Journal Entries</Text>
             </View>
           </View>

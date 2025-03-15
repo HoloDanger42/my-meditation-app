@@ -7,12 +7,12 @@ import {
   ImageBackground,
   Animated,
   Dimensions,
-  StatusBar,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { StatusBar } from "expo-status-bar";
 
 const BACKGROUNDS = [
   require("../../assets/images/meditation-bg-1.jpg"),
@@ -271,7 +271,7 @@ export default function MeditationPlayerScreen() {
       source={BACKGROUNDS[selectedBackground]}
       style={styles.container}
     >
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
       <View style={styles.overlay}>
         {/* Header */}
         <View style={styles.header}>

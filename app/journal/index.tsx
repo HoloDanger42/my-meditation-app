@@ -10,6 +10,8 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 interface JournalEntry {
   id: number;
@@ -22,6 +24,7 @@ interface JournalEntry {
 export default function JournalScreen() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const router = useRouter();
+  const { theme, isDark } = useTheme();
 
   useEffect(() => {
     loadEntries();
@@ -78,19 +81,19 @@ export default function JournalScreen() {
 
   const renderItem = ({ item }: { item: JournalEntry }) => (
     <TouchableOpacity
-      style={styles.entryCard}
+      style={[styles.entryCard, { backgroundColor: theme.card }]}
       onPress={() =>
         router.push({ pathname: "/journal/view", params: { id: item.id } })
       }
     >
       <View style={styles.entryHeader}>
-        <Text style={styles.entryTitle}>{item.title}</Text>
+        <Text style={[styles.entryTitle, { color: theme.text }]}>{item.title}</Text>
         <TouchableOpacity onPress={() => deleteEntry(item.id)}>
           <Ionicons name="trash-outline" size={20} color="#FF6347" />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
+      <Text style={[styles.timestamp, { color: theme.textTertiary }]}>{formatDate(item.timestamp)}</Text>
 
       {item.mood && (
         <View style={styles.moodTag}>
@@ -106,22 +109,113 @@ export default function JournalScreen() {
               color={item.mood.mood.color}
             />
           </View>
-          <Text style={styles.moodText}>{item.mood.mood.name}</Text>
+          <Text style={[styles.moodText, { color: theme.textSecondary }]}>{item.mood.mood.name}</Text>
         </View>
       )}
 
-      <Text style={styles.preview} numberOfLines={2}>
+      <Text style={[styles.preview, { color: theme.textSecondary }]} numberOfLines={2}>
         {item.content}
       </Text>
     </TouchableOpacity>
   );
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 15,
+      backgroundColor: theme.card,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    listContent: {
+      padding: 15,
+      paddingBottom: 30,
+    },
+    entryCard: {
+      borderRadius: 10,
+      padding: 15,
+      marginBottom: 15,
+      shadowColor: isDark ? "#000" : "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    entryHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 5,
+    },
+    entryTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      flex: 1,
+    },
+    timestamp: {
+      fontSize: 12,
+      marginBottom: 8,
+    },
+    moodTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    moodIcon: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 5,
+    },
+    moodText: {
+      fontSize: 12,
+    },
+    preview: {
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    emptyContainer: {
+      alignItems: "center",
+      marginTop: 50,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: theme.textTertiary,
+      marginBottom: 20,
+    },
+    newButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 12,
+      paddingHorizontal: 25,
+      borderRadius: 8,
+    },
+    buttonText: {
+      color: "white",
+      fontWeight: "500",
+      fontSize: 16,
+    },
+  });
+
   return (
     <View style={styles.container}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <Text style={styles.title}>Journal</Text>
         <TouchableOpacity onPress={() => router.push("/journal/new")}>
-          <Ionicons name="add-circle" size={28} color="#4E9F3D" />
+          <Ionicons name="add-circle" size={28} color={theme.accent} />
         </TouchableOpacity>
       </View>
 
@@ -145,98 +239,3 @@ export default function JournalScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: "white",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  listContent: {
-    padding: 15,
-    paddingBottom: 30,
-  },
-  entryCard: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  entryHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  entryTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: "#777",
-    marginBottom: 8,
-  },
-  moodTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  moodIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 5,
-  },
-  moodText: {
-    fontSize: 12,
-    color: "#555",
-  },
-  preview: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 20,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#777",
-    marginBottom: 20,
-  },
-  newButton: {
-    backgroundColor: "#4E9F3D",
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "500",
-    fontSize: 16,
-  },
-});

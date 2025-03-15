@@ -12,6 +12,7 @@ export const lightTheme = {
   cardBorder: "#eee",
   accent: "#4E9F3D", // Main app green color
   accentLight: "#4E9F3D20",
+  inputBackground: "#fff",
 };
 
 export const darkTheme = {
@@ -23,6 +24,7 @@ export const darkTheme = {
   cardBorder: "#333",
   accent: "#5DB54A", // Slightly lighter green for dark mode
   accentLight: "#5DB54A20",
+  inputBackground: "#252525",
 };
 
 type ThemeType = typeof lightTheme;

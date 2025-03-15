@@ -11,6 +11,8 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "../../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 // Define categories
 const categories = [
@@ -69,6 +71,7 @@ export default function MeditationListScreen() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [favorites, setFavorites] = useState<string[]>([]);
+  const { theme, isDark } = useTheme();
 
   useEffect(() => {
     loadFavorites();
@@ -96,6 +99,121 @@ export default function MeditationListScreen() {
     const minutes = Math.floor(seconds / 60);
     return `${minutes} min`;
   };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      paddingTop: 60,
+      paddingHorizontal: 20,
+      paddingBottom: 15,
+      backgroundColor: theme.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.cardBorder,
+      shadowColor: isDark ? "#000" : "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    categoryList: {
+      maxHeight: 40,
+      backgroundColor: theme.background,
+      paddingLeft: 15,
+    },
+    categoryItem: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      marginRight: 10,
+      borderRadius: 20,
+      backgroundColor: isDark ? "#333" : "#f5f5f5",
+    },
+    selectedCategory: {
+      backgroundColor: theme.accent,
+    },
+    categoryText: {
+      color: theme.textSecondary,
+      fontWeight: "500",
+    },
+    selectedCategoryText: {
+      color: "#fff",
+    },
+    meditationsList: {
+      padding: 15,
+    },
+    meditationItem: {
+      flexDirection: "row",
+      backgroundColor: theme.card,
+      marginBottom: 15,
+      borderRadius: 12,
+      overflow: "hidden",
+      shadowColor: isDark ? "#000" : "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 3,
+      elevation: isDark ? 4 : 2,
+    },
+    meditationImage: {
+      width: 100,
+      height: 100,
+      borderTopLeftRadius: 12,
+      borderBottomLeftRadius: 12,
+    },
+    meditationContent: {
+      flex: 1,
+      padding: 12,
+      justifyContent: "space-between",
+    },
+    meditationHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    meditationTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      flex: 1,
+    },
+    meditationDesc: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginTop: 4,
+    },
+    meditationMeta: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 8,
+    },
+    durationContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    durationText: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginLeft: 4,
+    },
+    categoryTag: {
+      backgroundColor: isDark ? theme.accent + "20" : "#f0f8f0",
+      paddingVertical: 2,
+      paddingHorizontal: 8,
+      borderRadius: 12,
+    },
+    categoryTagText: {
+      fontSize: 10,
+      color: theme.accent,
+      fontWeight: "500",
+    },
+  });
 
   const renderCategoryItem = ({ item }: { item: (typeof categories)[0] }) => (
     <TouchableOpacity
@@ -137,7 +255,11 @@ export default function MeditationListScreen() {
           <Text style={styles.meditationDesc}>{item.description}</Text>
           <View style={styles.meditationMeta}>
             <View style={styles.durationContainer}>
-              <Ionicons name="time-outline" size={14} color="#777" />
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={theme.textTertiary}
+              />
               <Text style={styles.durationText}>
                 {formatDuration(item.duration)}
               </Text>
@@ -156,6 +278,7 @@ export default function MeditationListScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <Text style={styles.title}>Meditations</Text>
       </View>
@@ -178,111 +301,3 @@ export default function MeditationListScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 15,
-    backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  categoryList: {
-    maxHeight: 40,
-    backgroundColor: "#fff",
-    paddingLeft: 15,
-  },
-  categoryItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginRight: 10,
-    borderRadius: 20,
-    backgroundColor: "#f5f5f5",
-  },
-  selectedCategory: {
-    backgroundColor: "#4E9F3D",
-  },
-  categoryText: {
-    color: "#555",
-    fontWeight: "500",
-  },
-  selectedCategoryText: {
-    color: "#fff",
-  },
-  meditationsList: {
-    padding: 15,
-  },
-  meditationItem: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    marginBottom: 15,
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  meditationImage: {
-    width: 100,
-    height: 100,
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-  },
-  meditationContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: "space-between",
-  },
-  meditationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  meditationTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
-  },
-  meditationDesc: {
-    fontSize: 14,
-    color: "#777",
-    marginTop: 4,
-  },
-  meditationMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  durationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  durationText: {
-    fontSize: 12,
-    color: "#777",
-    marginLeft: 4,
-  },
-  categoryTag: {
-    backgroundColor: "#f0f8f0",
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  categoryTagText: {
-    fontSize: 10,
-    color: "#4E9F3D",
-    fontWeight: "500",
-  },
-});

@@ -10,6 +10,8 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 interface MoodEntry {
   id: number;
@@ -27,6 +29,7 @@ interface MoodEntry {
 export default function MoodHistoryScreen() {
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
   const router = useRouter();
+  const { theme, isDark } = useTheme();
 
   useEffect(() => {
     const fetchMoodEntries = async () => {
@@ -84,6 +87,108 @@ export default function MoodHistoryScreen() {
     ]);
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 20,
+      backgroundColor: theme.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.cardBorder,
+      shadowColor: isDark ? "#000" : "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    backButton: {
+      padding: 5,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    listContent: {
+      padding: 15,
+    },
+    entryCard: {
+      backgroundColor: theme.card,
+      borderRadius: 10,
+      marginBottom: 15,
+      padding: 15,
+      shadowColor: isDark ? "#000" : "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 2,
+      elevation: isDark ? 3 : 2,
+    },
+    entryHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    moodIcon: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    entryMeta: {
+      flex: 1,
+    },
+    moodName: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: theme.text,
+    },
+    timestamp: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 2,
+    },
+    intensityBadge: {
+      backgroundColor: isDark ? "#333" : "#f0f0f0",
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: 12,
+    },
+    intensityText: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: theme.textSecondary,
+    },
+    notesContainer: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.cardBorder,
+    },
+    notesText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      lineHeight: 20,
+    },
+    emptyText: {
+      textAlign: "center",
+      color: theme.textTertiary,
+      fontSize: 16,
+      marginTop: 50,
+    },
+    deleteButton: {
+      padding: 8,
+      marginLeft: 5,
+    },
+  });
+
   const renderMoodEntry = ({ item }: { item: MoodEntry }) => (
     <View style={styles.entryCard}>
       <View style={styles.entryHeader}>
@@ -123,12 +228,13 @@ export default function MoodHistoryScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Mood History</Text>
         <View style={{ width: 24 }} />
@@ -146,96 +252,3 @@ export default function MoodHistoryScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: "white",
-  },
-  backButton: {
-    padding: 5,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  listContent: {
-    padding: 15,
-  },
-  entryCard: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginBottom: 15,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  entryHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  moodIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  entryMeta: {
-    flex: 1,
-  },
-  moodName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  timestamp: {
-    fontSize: 12,
-    color: "#777",
-    marginTop: 2,
-  },
-  intensityBadge: {
-    backgroundColor: "#f0f0f0",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  intensityText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  notesContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-  },
-  notesText: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 20,
-  },
-  emptyText: {
-    textAlign: "center",
-    color: "#777",
-    fontSize: 16,
-    marginTop: 50,
-  },
-  deleteButton: {
-    padding: 8,
-    marginLeft: 5,
-  },
-});
