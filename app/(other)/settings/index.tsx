@@ -17,9 +17,9 @@ export default function SettingsScreen() {
         {
           id: "notifications",
           title: "Notifications",
-          type: "switch",
-          value: notificationsEnabled,
-          onValueChange: setNotificationsEnabled,
+          type: "link",
+          icon: "notifications-outline",
+          onPress: () => router.push("/(other)/settings/notifications"),
         },
         {
           id: "darkMode",
@@ -83,7 +83,11 @@ export default function SettingsScreen() {
       );
     } else {
       return (
-        <TouchableOpacity key={item.id} style={styles.settingItem}>
+        <TouchableOpacity
+          key={item.id}
+          style={styles.settingItem}
+          onPress={item.onPress}
+        >
           <Ionicons name={item.icon} size={22} color={theme.accent} />
           <Text
             style={[styles.settingText, { marginLeft: 10, color: theme.text }]}

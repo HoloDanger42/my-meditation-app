@@ -393,7 +393,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.streakItem}>
               <Text style={styles.streakCount}>{totalMinutes}</Text>
-              <Text style={styles.streakLabel}>Journal Entries</Text>
+              <Text style={styles.streakLabel}>Minutes</Text>
             </View>
           </View>
         </View>
