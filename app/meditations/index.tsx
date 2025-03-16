@@ -7,12 +7,14 @@ import {
   FlatList,
   Image,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { Audio } from "expo-av";
 
 // Define categories
 const categories = [
@@ -32,6 +34,7 @@ const meditationsData = [
     duration: 180, // seconds
     category: ["anxiety", "beginners"],
     image: require("../../assets/images/meditation-thumb-1.jpg"),
+    audio: require("../../assets/audio/calm.mp3"),
   },
   {
     id: 2,
@@ -40,6 +43,7 @@ const meditationsData = [
     duration: 300, // seconds
     category: ["anxiety", "focus"],
     image: require("../../assets/images/meditation-thumb-2.jpg"),
+    audio: require("../../assets/audio/relaxing_breath.mp3"),
   },
   {
     id: 3,
@@ -48,6 +52,7 @@ const meditationsData = [
     duration: 600, // seconds
     category: ["sleep"],
     image: require("../../assets/images/meditation-thumb-3.jpg"),
+    audio: require("../../assets/audio/gentle_sleep.mp3"),
   },
   {
     id: 4,
@@ -56,6 +61,7 @@ const meditationsData = [
     duration: 300, // seconds
     category: ["focus"],
     image: require("../../assets/images/meditation-thumb-4.jpg"),
+    audio: require("../../assets/audio/calm.mp3"),
   },
   {
     id: 5,
@@ -64,6 +70,7 @@ const meditationsData = [
     duration: 180, // seconds
     category: ["beginners"],
     image: require("../../assets/images/meditation-thumb-5.jpg"),
+    audio: require("../../assets/audio/relaxing_breath.mp3"),
   },
 ];
 
@@ -72,10 +79,53 @@ export default function MeditationListScreen() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [favorites, setFavorites] = useState<string[]>([]);
   const { theme, isDark } = useTheme();
+  const [actualDurations, setActualDurations] = useState<
+    Record<number, number>
+  >({});
+  const [loadingDurations, setLoadingDurations] = useState(true);
 
   useEffect(() => {
     loadFavorites();
+    loadActualDurations();
   }, []);
+
+  const loadActualDurations = async () => {
+    setLoadingDurations(true);
+
+    const durations: Record<number, number> = {};
+
+    // Use Promise.all to load durations in parallel
+    await Promise.all(
+      meditationsData.map(async (meditation) => {
+        try {
+          const { sound } = await Audio.Sound.createAsync(meditation.audio, {
+            shouldPlay: false,
+          });
+
+          const status = await sound.getStatusAsync();
+
+          if (status.isLoaded) {
+            // Convert milliseconds to seconds and round up
+            const durationSeconds = Math.ceil(status.durationMillis! / 1000);
+            durations[meditation.id] = durationSeconds;
+          }
+
+          // Clean up sound object to prevent memory leaks
+          await sound.unloadAsync();
+        } catch (error) {
+          console.error(
+            `Error loading duration for meditation ${meditation.id}:`,
+            error
+          );
+          // Use fallback duration from data
+          durations[meditation.id] = meditation.duration;
+        }
+      })
+    );
+
+    setActualDurations(durations);
+    setLoadingDurations(false);
+  };
 
   const loadFavorites = async () => {
     try {
@@ -213,6 +263,9 @@ export default function MeditationListScreen() {
       color: theme.accent,
       fontWeight: "500",
     },
+    loadingIndicator: {
+      marginLeft: 5,
+    },
   });
 
   const renderCategoryItem = ({ item }: { item: (typeof categories)[0] }) => (
@@ -240,6 +293,7 @@ export default function MeditationListScreen() {
     item: (typeof meditationsData)[0];
   }) => {
     const isFavorite = favorites.includes(item.id.toString());
+    const duration = actualDurations[item.id] || item.duration;
 
     return (
       <TouchableOpacity
@@ -260,9 +314,17 @@ export default function MeditationListScreen() {
                 size={14}
                 color={theme.textTertiary}
               />
-              <Text style={styles.durationText}>
-                {formatDuration(item.duration)}
-              </Text>
+              {loadingDurations ? (
+                <ActivityIndicator
+                  size="small"
+                  color={theme.textTertiary}
+                  style={styles.loadingIndicator}
+                />
+              ) : (
+                <Text style={styles.durationText}>
+                  {formatDuration(duration)}
+                </Text>
+              )}
             </View>
             <View style={styles.categoryTag}>
               <Text style={styles.categoryTagText}>

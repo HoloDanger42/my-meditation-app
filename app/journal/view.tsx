@@ -18,6 +18,15 @@ interface JournalEntry {
   content: string;
   mood: any | null;
   timestamp: string;
+  relatedSessionId?: number | null;
+}
+
+interface MeditationSession {
+  id: number;
+  meditationId: string;
+  duration: number;
+  rating?: number;
+  timestamp: string;
 }
 
 export default function JournalViewScreen() {
@@ -25,6 +34,8 @@ export default function JournalViewScreen() {
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const router = useRouter();
   const { theme, isDark } = useTheme();
+  const [relatedSession, setRelatedSession] =
+    useState<MeditationSession | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -39,6 +50,21 @@ export default function JournalViewScreen() {
           );
           if (foundEntry) {
             setEntry(foundEntry);
+
+            if (foundEntry.relatedSessionId) {
+              const sessionsJson = await AsyncStorage.getItem(
+                "meditation_sessions"
+              );
+              if (sessionsJson) {
+                const sessions = JSON.parse(sessionsJson);
+                const foundSession = sessions.find(
+                  (s: MeditationSession) => s.id === foundEntry.relatedSessionId
+                );
+                if (foundSession) {
+                  setRelatedSession(foundSession);
+                }
+              }
+            }
           }
         }
       } catch (error) {
@@ -136,6 +162,41 @@ export default function JournalViewScreen() {
       fontSize: 16,
       color: theme.textTertiary,
     },
+    sessionCard: {
+      backgroundColor: theme.card,
+      borderRadius: 10,
+      padding: 15,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    sessionCardTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.textSecondary,
+      marginBottom: 10,
+    },
+    sessionDetails: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    sessionIcon: {
+      marginRight: 12,
+    },
+    sessionInfo: {
+      flex: 1,
+    },
+    sessionName: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: theme.text,
+      textTransform: "capitalize",
+      marginBottom: 4,
+    },
+    sessionMeta: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
   });
 
   if (!entry) {
@@ -188,6 +249,39 @@ export default function JournalViewScreen() {
             <Text style={styles.moodText}>
               Feeling {entry.mood.mood.name} ({entry.mood.intensity}/5)
             </Text>
+          </View>
+        )}
+
+        {relatedSession && (
+          <View style={styles.sessionCard}>
+            <Text style={styles.sessionCardTitle}>
+              Related Meditation Session
+            </Text>
+            <View style={styles.sessionDetails}>
+              <Ionicons
+                name="leaf"
+                size={22}
+                color={theme.accent}
+                style={styles.sessionIcon}
+              />
+              <View style={styles.sessionInfo}>
+                <Text style={styles.sessionName}>
+                  {relatedSession.meditationId.includes("/")
+                    ? relatedSession.meditationId
+                        .split("/")
+                        .pop()
+                        ?.replace(/-/g, " ")
+                    : relatedSession.meditationId}
+                </Text>
+                <Text style={styles.sessionMeta}>
+                  {formatDate(relatedSession.timestamp)} ·{" "}
+                  {Math.round(relatedSession.duration / 60)} min
+                  {relatedSession.rating
+                    ? ` · Rating: ${relatedSession.rating}/5`
+                    : ""}
+                </Text>
+              </View>
+            </View>
           </View>
         )}
 

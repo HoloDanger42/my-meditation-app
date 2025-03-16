@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -27,12 +28,24 @@ interface MoodEntry {
   timestamp: string;
 }
 
+interface MeditationSession {
+  id: number;
+  meditationId: string;
+  duration: number;
+  rating?: number;
+  timestamp: string;
+}
+
 export default function NewJournalEntryScreen() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [latestMood, setLatestMood] = useState<MoodEntry | null>(null);
   const router = useRouter();
   const { theme, isDark } = useTheme();
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPrompts, setShowPrompts] = useState(false);
+  const [recentSessions, setRecentSessions] = useState<MeditationSession[]>([]);
+  const [relatedSessionId, setRelatedSessionId] = useState<number | null>(null);
 
   // Fetch latest mood entry when component mounts
   useEffect(() => {
@@ -53,13 +66,45 @@ export default function NewJournalEntryScreen() {
     fetchLatestMood();
   }, []);
 
+  // Load recent meditation sessions
+  useEffect(() => {
+    const loadRecentSessions = async () => {
+      try {
+        const sessionsJson = await AsyncStorage.getItem("meditation_sessions");
+        if (sessionsJson) {
+          const sessions = JSON.parse(sessionsJson);
+          // Get only recent sessions (last 7 days)
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+          const recentOnes = sessions.filter(
+            (session: MeditationSession) =>
+              new Date(session.timestamp) >= oneWeekAgo
+          );
+
+          setRecentSessions(recentOnes.slice(0, 5)); // Last 5 sessions
+        }
+      } catch (error) {
+        console.error("Failed to load recent sessions:", error);
+      }
+    };
+
+    loadRecentSessions();
+  }, []);
+
   const saveEntry = async () => {
     if (!title.trim()) {
-      Alert.alert("Please enter a title for your journal entry");
+      Alert.alert(
+        "Missing Title",
+        "Please enter a title for your journal entry"
+      );
       return;
     }
 
     try {
+      // Show loading indicator
+      setIsSaving(true);
+
       // Get existing entries
       const entriesJson = await AsyncStorage.getItem("journal_entries");
       const entries = entriesJson ? JSON.parse(entriesJson) : [];
@@ -71,6 +116,7 @@ export default function NewJournalEntryScreen() {
         content,
         mood: latestMood,
         timestamp: new Date().toISOString(),
+        relatedSessionId: relatedSessionId,
       };
 
       // Save updated entries
@@ -85,6 +131,8 @@ export default function NewJournalEntryScreen() {
     } catch (error) {
       console.error("Failed to save journal entry:", error);
       Alert.alert("Error", "Failed to save your journal entry");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -186,7 +234,121 @@ export default function NewJournalEntryScreen() {
       fontWeight: "500",
       fontSize: 16,
     },
+    disabledButton: {
+      backgroundColor: theme.accent + "80", // 50% opacity
+    },
+    promptSection: {
+      marginBottom: 20,
+    },
+    promptButton: {
+      backgroundColor: theme.card,
+      padding: 12,
+      borderRadius: 8,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    promptButtonText: {
+      color: theme.accent,
+      fontWeight: "500",
+    },
+    promptList: {
+      backgroundColor: theme.card,
+      borderRadius: 8,
+      padding: 15,
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    promptHeader: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 10,
+    },
+    promptItem: {
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.cardBorder + "50",
+    },
+    promptText: {
+      fontSize: 14,
+      color: theme.text,
+      lineHeight: 20,
+    },
+    sessionSection: {
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 5,
+    },
+    sectionSubtitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 10,
+    },
+    sessionsScroll: {
+      flexGrow: 0,
+    },
+    sessionItem: {
+      backgroundColor: theme.card,
+      borderRadius: 10,
+      padding: 15,
+      marginRight: 10,
+      marginBottom: 5,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      width: 180,
+    },
+    sessionTitle: {
+      fontSize: 15,
+      fontWeight: "500",
+      color: theme.text,
+      marginBottom: 5,
+      textTransform: "capitalize",
+    },
+    sessionDate: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      marginBottom: 5,
+    },
+    sessionDuration: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.accent,
+    },
+    sessionCheck: {
+      position: "absolute",
+      right: 10,
+      top: 10,
+    },
+    emptySessionsText: {
+      color: theme.textTertiary,
+      fontStyle: "italic",
+      textAlign: "center",
+      padding: 15,
+    },
   });
+
+  const journalPrompts = useMemo(
+    () => [
+      "What are you grateful for today?",
+      "What emotions did you experience during today's meditation?",
+      "What insights came up during your practice today?",
+      "How did your body feel during meditation today?",
+      "What thoughts kept arising during your meditation?",
+      "How did your meditation affect your mood today?",
+      "What would you like to focus on in your next meditation?",
+      "How has your mindfulness practice affected your daily life?",
+      "What challenges did you face in your meditation today?",
+      "What sensations did you notice in your body today?",
+    ],
+    []
+  );
 
   return (
     <View style={styles.container}>
@@ -245,8 +407,111 @@ export default function NewJournalEntryScreen() {
             textAlignVertical="top"
           />
 
-          <TouchableOpacity style={styles.saveButton} onPress={saveEntry}>
-            <Text style={styles.buttonText}>Save Entry</Text>
+          <View style={styles.promptSection}>
+            <TouchableOpacity
+              style={styles.promptButton}
+              onPress={() => setShowPrompts(!showPrompts)}
+            >
+              <Text style={styles.promptButtonText}>
+                {showPrompts ? "Hide Prompts" : "Need Inspiration?"}
+              </Text>
+            </TouchableOpacity>
+
+            {showPrompts && (
+              <View style={styles.promptList}>
+                <Text style={styles.promptHeader}>Journal Prompts:</Text>
+                {journalPrompts.map((prompt, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.promptItem}
+                    onPress={() => {
+                      setContent(
+                        content ? `${content}\n\n${prompt}\n` : `${prompt}\n`
+                      );
+                      setShowPrompts(false);
+                    }}
+                  >
+                    <Text style={styles.promptText}>• {prompt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.sessionSection}>
+            <Text style={styles.sectionTitle}>Related Meditation Session</Text>
+            <Text style={styles.sectionSubtitle}>
+              Did this journal entry follow a meditation?
+            </Text>
+
+            {recentSessions.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.sessionsScroll}
+              >
+                {recentSessions.map((session) => {
+                  const isSelected = relatedSessionId === session.id;
+                  const date = new Date(session.timestamp);
+                  const formattedDate = `${date.toLocaleDateString()}  at ${date.getHours()}:${String(
+                    date.getMinutes()
+                  ).padStart(2, "0")}`;
+
+                  return (
+                    <TouchableOpacity
+                      key={session.id}
+                      style={[
+                        styles.sessionItem,
+                        isSelected && {
+                          backgroundColor: theme.accent + "30",
+                          borderColor: theme.accent,
+                        },
+                      ]}
+                      onPress={() =>
+                        setRelatedSessionId(isSelected ? null : session.id)
+                      }
+                    >
+                      <Text style={styles.sessionTitle} numberOfLines={1}>
+                        {session.meditationId.includes("/")
+                          ? session.meditationId
+                              .split("/")
+                              .pop()
+                              ?.replace(/-/g, " ")
+                          : session.meditationId}
+                      </Text>
+                      <Text style={styles.sessionDate}>{formattedDate}</Text>
+                      <Text style={styles.sessionDuration}>
+                        {Math.round(session.duration / 60)} min
+                      </Text>
+                      {isSelected && (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color={theme.accent}
+                          style={styles.sessionCheck}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <Text style={styles.emptySessionsText}>
+                No recent meditation sessions
+              </Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.disabledButton]}
+            onPress={saveEntry}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Save Entry</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

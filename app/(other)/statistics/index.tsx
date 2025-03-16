@@ -6,14 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
-import { LineChart } from "react-native-chart-kit";
 
 interface MoodEntry {
   id: number;
@@ -285,22 +283,28 @@ export default function StatisticsScreen() {
       fontWeight: "bold",
       color: theme.text,
     },
+    distributionContainer: {
+      flexDirection: "column", // Stack items vertically
+      marginVertical: 10,
+    },
     distributionItem: {
       flexDirection: "row",
       alignItems: "center",
       marginVertical: 8,
+      width: "100%",
     },
     distributionLabel: {
-      width: 60,
-      fontSize: 12,
+      width: 80,
+      fontSize: 14,
       color: theme.textSecondary,
+      paddingRight: 10,
     },
     distributionBarContainer: {
       flex: 1,
-      height: 15,
+      height: 20,
       backgroundColor: isDark ? "#333" : "#f0f0f0",
       borderRadius: 10,
-      marginHorizontal: 10,
+      marginHorizontal: 15,
     },
     distributionBar: {
       height: "100%",
@@ -313,6 +317,7 @@ export default function StatisticsScreen() {
       fontWeight: "bold",
       textAlign: "right",
       color: theme.text,
+      marginLeft: 5,
     },
     singleMoodMessage: {
       padding: 15,
@@ -384,7 +389,7 @@ export default function StatisticsScreen() {
             {moodData.length > 0 ? (
               <>
                 {getMoodDistributionData().labels.length > 1 ? (
-                  <View style={styles.customChart}>
+                  <View style={styles.distributionContainer}>
                     {getMoodDistributionData().labels.map((label, index) => {
                       const value =
                         getMoodDistributionData().datasets[0].data[index];
@@ -437,39 +442,43 @@ export default function StatisticsScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Meditation Time (Last 7 Days)</Text>
             {meditationSessions.length > 0 ? (
-              <>
-                <LineChart
-                  data={getMeditationChartData()}
-                  width={Dimensions.get("window").width - 70}
-                  height={180}
-                  chartConfig={{
-                    backgroundGradientFrom: theme.card,
-                    backgroundGradientTo: theme.card,
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(78, 159, 61, ${opacity})`,
-                    labelColor: (opacity = 1) => theme.text,
-                    style: {
-                      borderRadius: 16,
-                    },
-                    propsForDots: {
-                      r: "6",
-                      strokeWidth: "2",
-                      stroke: theme.accent,
-                    },
-                  }}
-                  bezier
-                  style={{
-                    marginTop: 10,
-                    borderRadius: 8,
-                  }}
-                />
-                <Text style={[styles.insightText, { marginTop: 10 }]}>
-                  Minutes of meditation per day
-                </Text>
-              </>
+              <View style={styles.customChart}>
+                {Object.entries(getMeditationChartData().labels).map(
+                  (label, index) => {
+                    const value =
+                      getMeditationChartData().datasets[0].data[index];
+                    const maxValue =
+                      Math.max(...getMeditationChartData().datasets[0].data) ||
+                      1;
+
+                    return (
+                      <View key={index} style={styles.chartItem}>
+                        <Text style={styles.barValue}>{value}</Text>
+                        <View style={styles.barContainer}>
+                          <View
+                            style={[
+                              styles.bar,
+                              {
+                                height: (value / maxValue) * 150,
+                                backgroundColor: theme.accent,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.barLabel}>
+                          {getMeditationChartData().labels[index]}
+                        </Text>
+                      </View>
+                    );
+                  }
+                )}
+              </View>
             ) : (
               <Text style={styles.emptyText}>No meditation data available</Text>
             )}
+            <Text style={[styles.insightText, { marginTop: 10 }]}>
+              Minutes of meditation per day
+            </Text>
           </View>
 
           <View style={styles.summaryCard}>
