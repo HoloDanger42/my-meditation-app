@@ -1,6 +1,8 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 // Set how notifications should be handled when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -14,6 +16,15 @@ Notifications.setNotificationHandler({
 // Check and request permissions
 export async function registerForPushNotificationsAsync() {
   let token;
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+  }
 
   if (Device.isDevice) {
     const { status: existingStatus } =
@@ -30,7 +41,23 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
 
-    token = (await Notifications.getExpoPushTokenAsync()).data;
+    try {
+      // Use this for development to avoid the ExpoPushTokenManager error
+      if (Constants.expoConfig?.extra?.eas?.projectId) {
+        const { data: token } = await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig.extra.eas.projectId,
+        });
+        return token;
+      } else {
+        console.log(
+          "No projectId found in app.json, push notifications may not work properly"
+        );
+        return null;
+      }
+    } catch (error) {
+      console.log("Error getting push token", error);
+      return null;
+    }
   } else {
     console.log("Must use physical device for push notifications");
   }

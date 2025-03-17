@@ -19,7 +19,7 @@ export default function SettingsScreen() {
           title: "Notifications",
           type: "link",
           icon: "notifications-outline",
-          onPress: () => router.push("/(other)/settings/notifications"),
+          onPress: () => router.push("/settings/notifications"),
         },
         {
           id: "darkMode",
