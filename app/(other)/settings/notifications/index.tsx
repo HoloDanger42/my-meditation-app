@@ -5,10 +5,8 @@ import {
   StyleSheet,
   Switch,
   TouchableOpacity,
-  Platform,
   ScrollView,
   Modal,
-  Button,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -263,23 +261,41 @@ export default function NotificationSettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.card,
+            borderBottomColor: theme.cardBorder,
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Notification Settings</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          Notification Settings
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.content}>
-        <Text style={styles.sectionTitle}>Daily Reminders</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Daily Reminders
+        </Text>
 
-        <View style={styles.settingRow}>
+        <View
+          style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingLabel}>Meditation Reminder</Text>
-            <Text style={styles.settingDetail}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>
+              Meditation Reminder
+            </Text>
+            <Text
+              style={[styles.settingDetail, { color: theme.textSecondary }]}
+            >
               Get reminded to meditate daily
             </Text>
           </View>
@@ -292,15 +308,27 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {meditationEnabled && (
-          <View style={styles.settingRow}>
+          <View
+            style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+          >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingLabel}>Reminder Time</Text>
+              <Text style={[styles.settingLabel, { color: theme.text }]}>
+                Reminder Time
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.timeButton}
+              style={[
+                styles.timeButton,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               onPress={() => setShowMeditationPicker(true)}
             >
-              <Text style={styles.timeText}>{formatTime(meditationTime)}</Text>
+              <Text style={[styles.timeText, { color: theme.text }]}>
+                {formatTime(meditationTime)}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -312,10 +340,16 @@ export default function NotificationSettingsScreen() {
           onConfirm={onMeditationTimeChange}
         />
 
-        <View style={styles.settingRow}>
+        <View
+          style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingLabel}>Journal Reminder</Text>
-            <Text style={styles.settingDetail}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>
+              Journal Reminder
+            </Text>
+            <Text
+              style={[styles.settingDetail, { color: theme.textSecondary }]}
+            >
               Get reminded to write in your journal
             </Text>
           </View>
@@ -328,15 +362,27 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {journalEnabled && (
-          <View style={styles.settingRow}>
+          <View
+            style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+          >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingLabel}>Reminder Time</Text>
+              <Text style={[styles.settingLabel, { color: theme.text }]}>
+                Reminder Time
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.timeButton}
+              style={[
+                styles.timeButton,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               onPress={() => setShowJournalPicker(true)}
             >
-              <Text style={styles.timeText}>{formatTime(journalTime)}</Text>
+              <Text style={[styles.timeText, { color: theme.text }]}>
+                {formatTime(journalTime)}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -348,10 +394,16 @@ export default function NotificationSettingsScreen() {
           onConfirm={onJournalTimeChange}
         />
 
-        <View style={styles.settingRow}>
+        <View
+          style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingLabel}>Mood Check-in</Text>
-            <Text style={styles.settingDetail}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>
+              Mood Check-in
+            </Text>
+            <Text
+              style={[styles.settingDetail, { color: theme.textSecondary }]}
+            >
               Get reminded to track your mood
             </Text>
           </View>
@@ -364,15 +416,27 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {moodEnabled && (
-          <View style={styles.settingRow}>
+          <View
+            style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+          >
             <View style={styles.settingLeft}>
-              <Text style={styles.settingLabel}>Reminder Time</Text>
+              <Text style={[styles.settingLabel, { color: theme.text }]}>
+                Reminder Time
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.timeButton}
+              style={[
+                styles.timeButton,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               onPress={() => setShowMoodPicker(true)}
             >
-              <Text style={styles.timeText}>{formatTime(moodTime)}</Text>
+              <Text style={[styles.timeText, { color: theme.text }]}>
+                {formatTime(moodTime)}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -384,7 +448,7 @@ export default function NotificationSettingsScreen() {
           onConfirm={onMoodTimeChange}
         />
 
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: theme.textSecondary }]}>
           Notifications will appear at the set times each day to help maintain
           your practice.
         </Text>
