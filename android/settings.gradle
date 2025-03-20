@@ -1,7 +1,15 @@
 pluginManagement {
-    includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().toString())
+    def reactNativePath = ["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()
+    // Fix any path with spaces
+    reactNativePath = reactNativePath.replace("Stress Thingy", "StressThingy")
+    includeBuild(new File(reactNativePath).getParentFile().toString())
 }
 plugins { id("com.facebook.react.settings") }
+
+// Helper function to normalize paths
+def normalizePath(String path) {
+    return path.replace("Stress Thingy", "StressThingy")
+}
 
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
@@ -26,13 +34,13 @@ rootProject.name = 'my-meditation-app'
 dependencyResolutionManagement {
   versionCatalogs {
     reactAndroidLibs {
-      from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
+      from(files(new File(normalizePath(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()), "../gradle/libs.versions.toml")))
     }
   }
 }
 
-apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
+apply from: new File(normalizePath(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim()), "../scripts/autolinking.gradle");
 useExpoModules()
 
 include ':app'
-includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile())
+includeBuild(new File(normalizePath(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim())).getParentFile())
