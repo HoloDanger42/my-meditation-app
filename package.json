@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "reset-project": "node ./scripts/reset-project.js && node ./scripts/post-prebuild.js",
+    "android": "expo run:android && node ./scripts/post-prebuild.js",
+    "ios": "expo run:ios && node ./scripts/post-prebuild.js",
+    "prebuild": "expo prebuild && node ./scripts/post-prebuild.js",
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint"
@@ -37,6 +38,7 @@
     "expo-symbols": "~0.2.1",
     "expo-system-ui": "~4.0.8",
     "expo-web-browser": "~14.0.2",
+    "my-meditation-app": "file:",
     "react": "^18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
