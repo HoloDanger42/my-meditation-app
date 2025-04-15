@@ -95,6 +95,14 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
+    
+    // Added configuration for using prebuilt react-native-reanimated libraries
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+    }
+    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
