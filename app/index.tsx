@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Text,
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
@@ -16,6 +17,8 @@ import {
   getTotalMeditationSessions,
   getTotalMeditationMinutes,
 } from "../utils/stats";
+import { generatePersonalizedRecommendations } from "../utils/recommendations";
+import { trackRecommendationEngagement } from "../utils/analytics";
 
 interface MoodEntry {
   id: number;
@@ -28,6 +31,32 @@ interface MoodEntry {
   intensity: number;
   notes: string;
   timestamp: string;
+}
+
+interface Meditation {
+  id: string;
+  title: string;
+  description?: string;
+  duration?: number;
+  imageUrl?: string;
+}
+
+interface Recommendations {
+  recommendedMeditations: Meditation[];
+  moodInsights: string;
+  journalPrompts: string[];
+}
+
+interface StylesProps {
+  recommendationsCard: any;
+  recommendationsTitle: any;
+  insightContainer: any;
+  insightText: any;
+  recommendationsSection: any;
+  recommendationsSectionTitle: any;
+  recommendedItem: any;
+  recommendedItemText: any;
+  [key: string]: any;
 }
 
 export default function HomeScreen() {
@@ -232,6 +261,7 @@ export default function HomeScreen() {
       borderRadius: 12,
       padding: 20,
       marginHorizontal: 20,
+      marginBottom: 20,
     },
     streakTitle: {
       fontSize: 16,
@@ -281,6 +311,45 @@ export default function HomeScreen() {
     moodTime: {
       fontSize: 12,
       color: theme.textTertiary,
+    },
+    recommendationsCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 20,
+      marginHorizontal: 20,
+      marginBottom: 20,
+    },
+    recommendationsTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 15,
+    },
+    insightContainer: {
+      marginBottom: 15,
+    },
+    insightText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    recommendationsSection: {
+      marginBottom: 15,
+    },
+    recommendationsSectionTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.text,
+      marginBottom: 10,
+    },
+    recommendedItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    recommendedItemText: {
+      fontSize: 14,
+      color: theme.text,
+      marginLeft: 10,
     },
   });
 
@@ -409,7 +478,67 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* Personalized Recommendations */}
+        <PersonalizedRecommendations styles={styles} />
       </ScrollView>
+    </View>
+  );
+}
+
+function PersonalizedRecommendations({ styles }: { styles: StylesProps }) {
+  const [recommendations, setRecommendations] =
+    useState<Recommendations | null>(null);
+  const { theme } = useTheme();
+  const router = useRouter();
+
+  useEffect(() => {
+    async function loadRecommendations() {
+      const recs = await generatePersonalizedRecommendations();
+      setRecommendations(recs);
+    }
+
+    loadRecommendations();
+  }, []);
+
+  if (!recommendations) {
+    return <ActivityIndicator color={theme.accent} size="small" />;
+  }
+
+  return (
+    <View style={styles.recommendationsCard}>
+      <Text style={styles.recommendationsTitle}>Personalized For You</Text>
+
+      {recommendations.moodInsights && (
+        <View style={styles.insightContainer}>
+          <Text style={styles.insightText}>{recommendations.moodInsights}</Text>
+        </View>
+      )}
+
+      {recommendations.recommendedMeditations?.length > 0 && (
+        <View style={styles.recommendationsSection}>
+          <Text style={styles.recommendationsSectionTitle}>
+            Recommended Meditations
+          </Text>
+          {recommendations.recommendedMeditations.map((meditation) => (
+            <TouchableOpacity
+              key={meditation.id}
+              style={styles.recommendedItem}
+              onPress={() => {
+                // Track that user clicked this recommendation
+                trackRecommendationEngagement(meditation.id, "clicked");
+                router.push(`/meditations/${meditation.id}`);
+              }}
+              onLayout={() => {
+                trackRecommendationEngagement(meditation.id, "viewed");
+              }}
+            >
+              <Ionicons name="leaf-outline" size={24} color={theme.accent} />
+              <Text style={styles.recommendedItemText}>{meditation.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }

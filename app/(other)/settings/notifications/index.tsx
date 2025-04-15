@@ -17,6 +17,7 @@ import {
   scheduleMeditationReminder,
   scheduleJournalReminder,
   scheduleMoodCheckInReminder,
+  schedulePersonalizedReminder,
   getSavedReminderTimes,
   cancelScheduledNotification,
 } from "../../../../utils/notifications";
@@ -150,15 +151,20 @@ export default function NotificationSettingsScreen() {
   const [meditationEnabled, setMeditationEnabled] = useState<boolean>(false);
   const [journalEnabled, setJournalEnabled] = useState<boolean>(false);
   const [moodEnabled, setMoodEnabled] = useState<boolean>(false);
+  const [personalizedEnabled, setPersonalizedEnabled] =
+    useState<boolean>(false);
 
   const [meditationTime, setMeditationTime] = useState<Date>(new Date());
   const [journalTime, setJournalTime] = useState<Date>(new Date());
   const [moodTime, setMoodTime] = useState<Date>(new Date());
+  const [personalizedTime, setPersonalizedTime] = useState<Date>(new Date());
 
   const [showMeditationPicker, setShowMeditationPicker] =
     useState<boolean>(false);
   const [showJournalPicker, setShowJournalPicker] = useState<boolean>(false);
   const [showMoodPicker, setShowMoodPicker] = useState<boolean>(false);
+  const [showPersonalizedPicker, setShowPersonalizedPicker] =
+    useState<boolean>(false);
 
   useEffect(() => {
     // Request notification permissions when the component mounts
@@ -190,6 +196,14 @@ export default function NotificationSettingsScreen() {
         date.setMinutes(savedTimes.mood.minute);
         setMoodTime(date);
         setMoodEnabled(true);
+      }
+
+      if (savedTimes.personalized) {
+        const date = new Date();
+        date.setHours(savedTimes.personalized.hour);
+        date.setMinutes(savedTimes.personalized.minute);
+        setPersonalizedTime(date);
+        setPersonalizedEnabled(true);
       }
     };
 
@@ -232,6 +246,18 @@ export default function NotificationSettingsScreen() {
     }
   };
 
+  const togglePersonalizedReminder = async (enabled: boolean) => {
+    setPersonalizedEnabled(enabled);
+    if (enabled) {
+      await schedulePersonalizedReminder(
+        personalizedTime.getHours(),
+        personalizedTime.getMinutes()
+      );
+    } else {
+      await cancelScheduledNotification("personalized-reminder");
+    }
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
@@ -258,6 +284,15 @@ export default function NotificationSettingsScreen() {
       selectedDate.getMinutes()
     );
     setShowMoodPicker(false);
+  };
+
+  const onPersonalizedTimeChange = (selectedDate: Date) => {
+    setPersonalizedTime(selectedDate);
+    schedulePersonalizedReminder(
+      selectedDate.getHours(),
+      selectedDate.getMinutes()
+    );
+    setShowPersonalizedPicker(false);
   };
 
   return (
@@ -446,6 +481,60 @@ export default function NotificationSettingsScreen() {
           initialTime={moodTime}
           onCancel={() => setShowMoodPicker(false)}
           onConfirm={onMoodTimeChange}
+        />
+
+        <View
+          style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+        >
+          <View style={styles.settingLeft}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>
+              Personalized Insights
+            </Text>
+            <Text
+              style={[styles.settingDetail, { color: theme.textSecondary }]}
+            >
+              Get AI-powered recommendations based on your mood patterns
+            </Text>
+          </View>
+          <Switch
+            value={personalizedEnabled}
+            onValueChange={togglePersonalizedReminder}
+            trackColor={{ false: "#767577", true: theme.accent + "80" }}
+            thumbColor={personalizedEnabled ? theme.accent : "#f4f3f4"}
+          />
+        </View>
+
+        {personalizedEnabled && (
+          <View
+            style={[styles.settingRow, { borderBottomColor: theme.cardBorder }]}
+          >
+            <View style={styles.settingLeft}>
+              <Text style={[styles.settingLabel, { color: theme.text }]}>
+                Reminder Time
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.timeButton,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+              onPress={() => setShowPersonalizedPicker(true)}
+            >
+              <Text style={[styles.timeText, { color: theme.text }]}>
+                {formatTime(personalizedTime)}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <CustomTimePicker
+          visible={showPersonalizedPicker}
+          initialTime={personalizedTime}
+          onCancel={() => setShowPersonalizedPicker(false)}
+          onConfirm={onPersonalizedTimeChange}
         />
 
         <Text style={[styles.note, { color: theme.textSecondary }]}>

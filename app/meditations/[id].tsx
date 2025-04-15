@@ -22,6 +22,7 @@ import { Audio, AVPlaybackStatus } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { meditationsData } from "../../data/meditationsData";
 
 const BACKGROUNDS = [
   require("../../assets/images/meditation-bg-1.jpg"),
@@ -62,28 +63,6 @@ export default function MeditationPlayerScreen() {
   );
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
-
-  // Meditation data - could be moved to a separate file
-  const meditationData = {
-    "1": {
-      title: "Calm Mind",
-      description: "Reduce anxiety and find peace",
-      audio: require("../../assets/audio/calm.mp3"),
-      duration: 180, // 3 minutes
-    },
-    "2": {
-      title: "Relaxing Breath",
-      description: "Slow breathing for relaxation",
-      audio: require("../../assets/audio/relaxing_breath.mp3"),
-      duration: 300, // 5 minutes
-    },
-    "3": {
-      title: "Gentle Sleep",
-      description: "Prepare your mind for restful sleep",
-      audio: require("../../assets/audio/gentle_sleep.mp3"),
-      duration: 600, // 10 minutes
-    },
-  };
 
   // Animation functions
   const startBreathingAnimation = useCallback(() => {
@@ -163,8 +142,7 @@ export default function MeditationPlayerScreen() {
   async function initializeAudio() {
     setIsAudioLoading(true);
     const meditationId = Array.isArray(id) ? id[0] : `${id}`;
-    const meditation =
-      meditationData[meditationId as keyof typeof meditationData];
+    const meditation = meditationsData[meditationId];
 
     if (!meditation) {
       setIsAudioLoading(false);
@@ -504,8 +482,8 @@ export default function MeditationPlayerScreen() {
   useEffect(() => {
     // Set up meditation info
     const meditationId = Array.isArray(id) ? id[0] : `${id}`;
-    if (meditationData[meditationId as keyof typeof meditationData]) {
-      const info = meditationData[meditationId as keyof typeof meditationData];
+    if (meditationsData[meditationId]) {
+      const info = meditationsData[meditationId];
       setMeditationInfo(info);
       setDuration(info.duration);
     }

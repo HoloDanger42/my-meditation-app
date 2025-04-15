@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { generatePersonalizedRecommendations } from "./recommendations";
 
 // Set how notifications should be handled when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -171,6 +172,46 @@ export async function schedulePostMeditationNotification(
   return identifier;
 }
 
+// Schedule a personalized reminder
+export async function schedulePersonalizedReminder(
+  hour: number,
+  minute: number
+) {
+  // Cancel any existing personalized reminders
+  await cancelScheduledNotification("personalized-reminder");
+
+  const recommendations = await generatePersonalizedRecommendations();
+
+  // Use the mood insights to create a personalized message
+  const personalizedMessage = recommendations?.moodInsights
+    ? `Based on your recent ${recommendations.dominantMood || "mood"}, a ${
+        recommendations.recommendedMeditations[0]?.title || "short"
+      } meditation might help.`
+    : "Take a moment for mindfulness today.";
+
+  const identifier = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Personalized Mindfulness Reminder",
+      body: personalizedMessage,
+      data: { type: "personalized-reminder" },
+    },
+    trigger: {
+      hour,
+      minute,
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+    },
+    identifier: "personalized-reminder",
+  });
+
+  // Save the reminder time to AsyncStorage
+  await AsyncStorage.setItem(
+    "personalized_reminder_time",
+    JSON.stringify({ hour, minute })
+  );
+
+  return identifier;
+}
+
 // Cancel a specific scheduled notification by identifier
 export async function cancelScheduledNotification(identifier: string) {
   await Notifications.cancelScheduledNotificationAsync(identifier);
@@ -191,10 +232,14 @@ export async function getSavedReminderTimes() {
   const meditationTime = await AsyncStorage.getItem("meditation_reminder_time");
   const journalTime = await AsyncStorage.getItem("journal_reminder_time");
   const moodTime = await AsyncStorage.getItem("mood_reminder_time");
+  const personalizedTime = await AsyncStorage.getItem(
+    "personalized_reminder_time"
+  );
 
   return {
     meditation: meditationTime ? JSON.parse(meditationTime) : null,
     journal: journalTime ? JSON.parse(journalTime) : null,
     mood: moodTime ? JSON.parse(moodTime) : null,
+    personalized: personalizedTime ? JSON.parse(personalizedTime) : null,
   };
 }

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  ScrollView,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -177,6 +176,7 @@ export default function MeditationListScreen() {
       maxHeight: 40,
       backgroundColor: theme.background,
       paddingLeft: 15,
+      marginTop: 15,
     },
     categoryItem: {
       paddingVertical: 8,
