@@ -12,6 +12,7 @@ export const lightTheme = {
   cardBorder: "#eee",
   accent: "#4E9F3D", // Main app green color
   accentLight: "#4E9F3D20",
+  accentHighlight: "#3A7D2C",
   inputBackground: "#fff",
 };
 
@@ -24,6 +25,7 @@ export const darkTheme = {
   cardBorder: "#333",
   accent: "#5DB54A", // Slightly lighter green for dark mode
   accentLight: "#5DB54A20",
+  accentHighlight: "#70C160", // A slightly lighter shade for highlight/press state
   inputBackground: "#252525",
 };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Text,
   View,
@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../context/ThemeContext";
@@ -38,38 +38,50 @@ export default function HomeScreen() {
   const [sessionCount, setSessionCount] = useState(0);
   const [totalMinutes, setTotalMinutes] = useState(0);
 
-  // Fetch latest mood entry when component mounts
-  useEffect(() => {
-    const fetchLatestMood = async () => {
-      try {
-        const entriesJson = await AsyncStorage.getItem("mood_entries");
-        if (entriesJson) {
-          const entries = JSON.parse(entriesJson);
-          if (entries.length > 0) {
-            setLatestMood(entries[0]); // First entry is the latest
-          }
+  // Function to fetch latest mood
+  const fetchLatestMood = useCallback(async () => {
+    try {
+      const entriesJson = await AsyncStorage.getItem("mood_entries");
+      if (entriesJson) {
+        const entries = JSON.parse(entriesJson);
+        if (entries.length > 0) {
+          setLatestMood(entries[0]); // First entry is the latest
+        } else {
+          setLatestMood(null); // Handle case where entries exist but are empty
         }
-      } catch (error) {
-        console.error("Failed to fetch mood data:", error);
+      } else {
+        setLatestMood(null); // Handle case where no entries key exists
       }
-    };
-
-    fetchLatestMood();
-  }, []);
-
-  useEffect(() => {
-    async function loadStats() {
-      const currentStreak = await getCurrentStreak();
-      const totalSessions = await getTotalMeditationSessions();
-      const minutes = await getTotalMeditationMinutes();
-
-      setStreak(currentStreak);
-      setSessionCount(totalSessions);
-      setTotalMinutes(minutes);
+    } catch (error) {
+      console.error("Failed to fetch mood data:", error);
+      setLatestMood(null); // Reset on error
     }
+  }, []); // useCallback dependency array
 
-    loadStats();
-  }, []);
+  // Function to load stats
+  const loadStats = useCallback(async () => {
+    const currentStreak = await getCurrentStreak();
+    const totalSessions = await getTotalMeditationSessions();
+    const minutes = await getTotalMeditationMinutes();
+
+    setStreak(currentStreak);
+    setSessionCount(totalSessions);
+    setTotalMinutes(minutes);
+  }, []); // useCallback dependency array
+
+  // Use useFocusEffect to fetch data when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("HomeScreen focused, fetching data..."); // Add log for debugging
+      fetchLatestMood();
+      loadStats();
+
+      // Optional: Return a cleanup function if needed
+      return () => {
+        // console.log("HomeScreen blurred");
+      };
+    }, [fetchLatestMood, loadStats]) // Dependencies for the outer useCallback
+  );
 
   // Render mood display based on latest entry
   const renderMoodDisplay = () => {
