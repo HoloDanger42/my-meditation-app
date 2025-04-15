@@ -164,7 +164,7 @@ export default function BreathingExerciseScreen() {
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 20,
-      paddingTop: 60,
+      paddingTop: 40,
       paddingBottom: 15,
       backgroundColor: theme.card,
     },
