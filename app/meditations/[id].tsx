@@ -151,7 +151,7 @@ export default function MeditationPlayerScreen() {
 
     setDuration(meditation.duration);
     const selectedAudio =
-      meditation.audio || require("../../assets/audio/meditation.mp3");
+      meditation.audio || require("../../assets/audio/calm.mp3");
 
     try {
       const { sound } = await Audio.Sound.createAsync(selectedAudio, {

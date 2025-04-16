@@ -14,64 +14,32 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { Audio } from "expo-av";
+import { meditationsData } from "../../data/meditationsData";
 
 // Define categories
 const categories = [
   { id: "all", name: "All" },
-  { id: "anxiety", name: "Anxiety" },
+  { id: "calm", name: "Calm" },
+  { id: "peaceful", name: "Peaceful" },
+  { id: "happy", name: "Happy" },
+  { id: "relaxing", name: "Relaxing" },
+  { id: "ambient", name: "Ambient" },
   { id: "sleep", name: "Sleep" },
-  { id: "focus", name: "Focus" },
-  { id: "beginners", name: "Beginners" },
 ];
 
-// Define meditation data with categories
-const meditationsData = [
-  {
-    id: 1,
-    title: "Calm Mind",
-    description: "Reduce anxiety and find peace",
-    duration: 180, // seconds
-    category: ["anxiety", "beginners"],
-    image: require("../../assets/images/meditation-thumb-1.jpg"),
-    audio: require("../../assets/audio/calm.mp3"),
-  },
-  {
-    id: 2,
-    title: "Relaxing Breath",
-    description: "Slow breathing for relaxation",
-    duration: 300, // seconds
-    category: ["anxiety", "focus"],
-    image: require("../../assets/images/meditation-thumb-2.jpg"),
-    audio: require("../../assets/audio/relaxing_breath.mp3"),
-  },
-  {
-    id: 3,
-    title: "Gentle Sleep",
-    description: "Prepare your mind for restful sleep",
-    duration: 600, // seconds
-    category: ["sleep"],
-    image: require("../../assets/images/meditation-thumb-3.jpg"),
-    audio: require("../../assets/audio/gentle_sleep.mp3"),
-  },
-  {
-    id: 4,
-    title: "Focus Mind",
-    description: "Improve concentration and clarity",
-    duration: 300, // seconds
-    category: ["focus"],
-    image: require("../../assets/images/meditation-thumb-4.jpg"),
-    audio: require("../../assets/audio/calm.mp3"),
-  },
-  {
-    id: 5,
-    title: "Beginner's Guide",
-    description: "Introduction to meditation practice",
-    duration: 180, // seconds
-    category: ["beginners"],
-    image: require("../../assets/images/meditation-thumb-5.jpg"),
-    audio: require("../../assets/audio/relaxing_breath.mp3"),
-  },
-];
+const meditationImages: { [key: string]: any } = {
+  "1": require("../../assets/images/meditation-thumb-1.jpg"),
+  "2": require("../../assets/images/meditation-thumb-2.jpg"),
+  "3": require("../../assets/images/meditation-thumb-3.jpg"),
+};
+
+const meditationsArray = Object.values(meditationsData).map((meditation) => ({
+  ...meditation,
+  id: parseInt(meditation.id), // Convert string ID to number
+  image:
+    meditationImages[meditation.id] ||
+    require("../../assets/images/meditation-thumb-5.jpg"),
+}));
 
 export default function MeditationListScreen() {
   const router = useRouter();
@@ -95,7 +63,7 @@ export default function MeditationListScreen() {
 
     // Use Promise.all to load durations in parallel
     await Promise.all(
-      meditationsData.map(async (meditation) => {
+      meditationsArray.map(async (meditation) => {
         try {
           const { sound } = await Audio.Sound.createAsync(meditation.audio, {
             shouldPlay: false,
@@ -139,8 +107,8 @@ export default function MeditationListScreen() {
 
   const filteredMeditations =
     selectedCategory === "all"
-      ? meditationsData
-      : meditationsData.filter((item) =>
+      ? meditationsArray
+      : meditationsArray.filter((item) =>
           item.category.includes(selectedCategory)
         );
 
@@ -290,7 +258,7 @@ export default function MeditationListScreen() {
   const renderMeditationItem = ({
     item,
   }: {
-    item: (typeof meditationsData)[0];
+    item: (typeof meditationsArray)[0];
   }) => {
     const isFavorite = favorites.includes(item.id.toString());
     const duration = actualDurations[item.id] || item.duration;

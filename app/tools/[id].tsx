@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 export default function ToolScreen() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
 
   return (
     <View style={styles.container}>

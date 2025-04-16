@@ -11,13 +11,6 @@ export default function ToolsScreen() {
 
   const tools = [
     { id: "breathing", title: "Breathing Exercises", icon: "pulse-outline" },
-    { id: "thoughts", title: "Thought Reframing", icon: "bulb-outline" },
-    { id: "grounding", title: "Grounding Techniques", icon: "leaf-outline" },
-    {
-      id: "affirmations",
-      title: "Positive Affirmations",
-      icon: "sunny-outline",
-    },
   ];
 
   const styles = StyleSheet.create({
