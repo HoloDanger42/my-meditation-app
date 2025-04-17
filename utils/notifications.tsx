@@ -1,9 +1,9 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { generatePersonalizedRecommendations } from "./recommendations";
+import { getSecureItem, setSecureItem } from "./secureStorage";
 
 // Set how notifications should be handled when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -85,11 +85,8 @@ export async function scheduleMeditationReminder(hour: number, minute: number) {
     identifier: "meditation-reminder",
   });
 
-  // Save the reminder time to AsyncStorage
-  await AsyncStorage.setItem(
-    "meditation_reminder_time",
-    JSON.stringify({ hour, minute })
-  );
+  // Save the reminder time
+  await setSecureItem("meditation_reminder_time", { hour, minute });
 
   return identifier;
 }
@@ -113,11 +110,8 @@ export async function scheduleJournalReminder(hour: number, minute: number) {
     identifier: "journal-reminder",
   });
 
-  // Save the reminder time to AsyncStorage
-  await AsyncStorage.setItem(
-    "journal_reminder_time",
-    JSON.stringify({ hour, minute })
-  );
+  // Save the reminder time
+  await setSecureItem("journal_reminder_time", { hour, minute });
 
   return identifier;
 }
@@ -144,11 +138,8 @@ export async function scheduleMoodCheckInReminder(
     identifier: "mood-reminder",
   });
 
-  // Save the reminder time to AsyncStorage
-  await AsyncStorage.setItem(
-    "mood_reminder_time",
-    JSON.stringify({ hour, minute })
-  );
+  // Save the reminder time
+  await setSecureItem("mood_reminder_time", { hour, minute });
 
   return identifier;
 }
@@ -203,11 +194,8 @@ export async function schedulePersonalizedReminder(
     identifier: "personalized-reminder",
   });
 
-  // Save the reminder time to AsyncStorage
-  await AsyncStorage.setItem(
-    "personalized_reminder_time",
-    JSON.stringify({ hour, minute })
-  );
+  // Save the reminder time
+  await setSecureItem("personalized_reminder_time", { hour, minute });
 
   return identifier;
 }
@@ -227,19 +215,26 @@ export async function getAllScheduledNotifications() {
   return await Notifications.getAllScheduledNotificationsAsync();
 }
 
-// Load saved reminder times from AsyncStorage
+// Load saved reminder times
 export async function getSavedReminderTimes() {
-  const meditationTime = await AsyncStorage.getItem("meditation_reminder_time");
-  const journalTime = await AsyncStorage.getItem("journal_reminder_time");
-  const moodTime = await AsyncStorage.getItem("mood_reminder_time");
-  const personalizedTime = await AsyncStorage.getItem(
-    "personalized_reminder_time"
+  const meditationTime = await getSecureItem<{ hour: number; minute: number }>(
+    "meditation_reminder_time"
   );
+  const journalTime = await getSecureItem<{ hour: number; minute: number }>(
+    "journal_reminder_time"
+  );
+  const moodTime = await getSecureItem<{ hour: number; minute: number }>(
+    "mood_reminder_time"
+  );
+  const personalizedTime = await getSecureItem<{
+    hour: number;
+    minute: number;
+  }>("personalized_reminder_time");
 
   return {
-    meditation: meditationTime ? JSON.parse(meditationTime) : null,
-    journal: journalTime ? JSON.parse(journalTime) : null,
-    mood: moodTime ? JSON.parse(moodTime) : null,
-    personalized: personalizedTime ? JSON.parse(personalizedTime) : null,
+    meditation: meditationTime || null,
+    journal: journalTime || null,
+    mood: moodTime || null,
+    personalized: personalizedTime || null,
   };
 }

@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getSecureItem } from "./secureStorage";
 
 interface MeditationSession {
   id: number;
@@ -10,10 +10,11 @@ interface MeditationSession {
 
 export async function getTotalMeditationSessions(): Promise<number> {
   try {
-    const sessionsJson = await AsyncStorage.getItem("meditation_sessions");
-    if (!sessionsJson) return 0;
+    const sessions = await getSecureItem<MeditationSession[]>(
+      "meditation_sessions"
+    );
+    if (!sessions) return 0;
 
-    const sessions = JSON.parse(sessionsJson);
     return sessions.length;
   } catch (error) {
     console.error("Failed to get meditation count:", error);
@@ -23,18 +24,16 @@ export async function getTotalMeditationSessions(): Promise<number> {
 
 export async function getCurrentStreak(): Promise<number> {
   try {
-    const sessionsJson = await AsyncStorage.getItem("meditation_sessions");
-    if (!sessionsJson) return 0;
-
-    const sessions = JSON.parse(sessionsJson) as MeditationSession[];
+    const sessions = await getSecureItem<MeditationSession[]>(
+      "meditation_sessions"
+    );
+    if (!sessions || sessions.length === 0) return 0;
 
     // Sort sessions by date (most recent first)
     const sortedSessions = sessions.sort(
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-
-    if (sortedSessions.length === 0) return 0;
 
     // Check if there's a session today
     const today = new Date();
@@ -76,10 +75,11 @@ export async function getCurrentStreak(): Promise<number> {
 
 export async function getTotalMeditationMinutes(): Promise<number> {
   try {
-    const sessionsJson = await AsyncStorage.getItem("meditation_sessions");
-    if (!sessionsJson) return 0;
+    const sessions = await getSecureItem<MeditationSession[]>(
+      "meditation_sessions"
+    );
+    if (!sessions) return 0;
 
-    const sessions = JSON.parse(sessionsJson) as MeditationSession[];
     const totalSeconds = sessions.reduce(
       (total, session) => total + session.duration,
       0

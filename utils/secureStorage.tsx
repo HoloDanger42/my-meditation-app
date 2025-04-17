@@ -19,6 +19,14 @@ export async function getSecureItem<T>(key: string): Promise<T | null> {
       // Modern AES encryption
       const encryptedData = data.substring(NEW_ENCRYPTION_PREFIX.length);
       return await decryptData(encryptedData);
+    } else if (data.startsWith('plain:')) {
+      // This is our plaintext fallback format
+      const plainData = data.substring(6); // Remove 'plain:' prefix
+      try {
+        return JSON.parse(plainData) as T;
+      } catch {
+        return plainData as unknown as T;
+      }
     } else {
       // Unencrypted legacy data
       try {
@@ -40,11 +48,27 @@ export async function setSecureItem(key: string, data: any): Promise<void> {
   try {
     const encryptedData = await encryptData(data);
 
-    // Add prefix to identify as encrypted data
-    await AsyncStorage.setItem(key, `${NEW_ENCRYPTION_PREFIX}${encryptedData}`);
+    // If the data starts with 'plain:', it means encryption failed but we have a plaintext fallback
+    if (encryptedData.startsWith('plain:')) {
+      console.warn(`Storing unencrypted data for key ${key} due to encryption failure`);
+      // Store without the encryption prefix to indicate it's not encrypted
+      await AsyncStorage.setItem(key, encryptedData);
+    } else {
+      // Add prefix to identify as encrypted data
+      await AsyncStorage.setItem(key, `${NEW_ENCRYPTION_PREFIX}${encryptedData}`);
+    }
   } catch (error) {
     console.error(`Error setting secure item for key ${key}:`, error);
-    throw new Error("Failed to store encrypted data");
+    
+    // Last resort fallback: store as plain JSON
+    try {
+      const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
+      await AsyncStorage.setItem(key, jsonStr);
+      console.warn(`Stored unencrypted data as fallback for key ${key}`);
+    } catch (fallbackError) {
+      console.error("Even fallback storage failed:", fallbackError);
+      throw new Error("Failed to store encrypted data");
+    }
   }
 }
 

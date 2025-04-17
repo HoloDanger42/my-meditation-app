@@ -10,10 +10,10 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { Audio } from "expo-av";
+import { getSecureItem } from "../../utils/secureStorage";
 import { meditationsData } from "../../data/meditationsData";
 
 // Define categories
@@ -96,9 +96,9 @@ export default function MeditationListScreen() {
 
   const loadFavorites = async () => {
     try {
-      const favoritesJson = await AsyncStorage.getItem("favorite_meditations");
-      if (favoritesJson) {
-        setFavorites(JSON.parse(favoritesJson));
+      const favorites = await getSecureItem<string[]>("favorite_meditations");
+      if (favorites) {
+        setFavorites(favorites);
       }
     } catch (error) {
       console.error("Failed to load favorites:", error);

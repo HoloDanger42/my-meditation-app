@@ -1,19 +1,13 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getSecureItem } from "./secureStorage";
 import { MoodEntry, MeditationSession } from "../types/dataTypes";
 import { meditationsData } from "../data/meditationsData";
 
 export async function generatePersonalizedRecommendations() {
   try {
     // Fetch user data
-    const moodEntriesJson = await AsyncStorage.getItem("mood_entries");
-    const moodData = moodEntriesJson ? JSON.parse(moodEntriesJson) : [];
-
-    const meditationSessionsJson = await AsyncStorage.getItem(
-      "meditation_sessions"
-    );
-    const meditationData = meditationSessionsJson
-      ? JSON.parse(meditationSessionsJson)
-      : [];
+    const moodData = (await getSecureItem<MoodEntry[]>("mood_entries")) || [];
+    const meditationData =
+      (await getSecureItem<MeditationSession[]>("meditation_sessions")) || [];
 
     const dominantMood = calculateDominantMood(moodData);
 

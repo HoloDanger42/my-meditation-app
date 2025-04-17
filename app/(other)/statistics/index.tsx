@@ -9,11 +9,11 @@ import {
   Dimensions,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { LineChart, BarChart } from "react-native-gifted-charts";
+import { getSecureItem } from "../../../utils/secureStorage";
 
 interface MoodEntry {
   id: number;
@@ -38,7 +38,16 @@ interface MeditationSession {
 
 export default function StatisticsScreen() {
   const [moodData, setMoodData] = useState<MoodEntry[]>([]);
-  const [journalData, setJournalData] = useState([]);
+  const [journalData, setJournalData] = useState<
+    {
+      id: number;
+      title: string;
+      content: string;
+      mood: any | null;
+      timestamp: string;
+      relatedSessionId?: number | null;
+    }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { theme, isDark } = useTheme();
@@ -52,19 +61,19 @@ export default function StatisticsScreen() {
     setLoading(true); // Set loading true when fetching starts
     try {
       // Load mood entries
-      const moodEntriesJson = await AsyncStorage.getItem("mood_entries");
-      setMoodData(moodEntriesJson ? JSON.parse(moodEntriesJson) : []);
+      const moodEntries = await getSecureItem<MoodEntry[]>("mood_entries");
+      setMoodData(moodEntries || []);
 
       // Load journal entries
-      const journalEntriesJson = await AsyncStorage.getItem("journal_entries");
-      setJournalData(journalEntriesJson ? JSON.parse(journalEntriesJson) : []);
+      const journalEntries = await getSecureItem<any[]>("journal_entries");
+      setJournalData(journalEntries || []);
 
       // Load meditation sessions
-      const meditationSessionsJson = await AsyncStorage.getItem(
+      const sessions = await getSecureItem<MeditationSession[]>(
         "meditation_sessions"
       );
-      if (meditationSessionsJson) {
-        const sessions = JSON.parse(meditationSessionsJson);
+
+      if (sessions && Array.isArray(sessions)) {
         setMeditationSessions(sessions);
 
         // Calculate average rating

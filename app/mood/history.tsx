@@ -8,10 +8,10 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
 
 interface MoodEntry {
   id: number;
@@ -34,12 +34,15 @@ export default function MoodHistoryScreen() {
   useEffect(() => {
     const fetchMoodEntries = async () => {
       try {
-        const entriesJson = await AsyncStorage.getItem("mood_entries");
-        if (entriesJson) {
-          setMoodEntries(JSON.parse(entriesJson));
+        const entries = await getSecureItem<MoodEntry[]>("mood_entries");
+        if (entries) {
+          setMoodEntries(entries);
+        } else {
+          setMoodEntries([]);
         }
       } catch (error) {
         console.error("Failed to fetch mood entries:", error);
+        setMoodEntries([]);
       }
     };
 
@@ -71,10 +74,7 @@ export default function MoodHistoryScreen() {
             );
 
             // Save the updated entries list to storage
-            await AsyncStorage.setItem(
-              "mood_entries",
-              JSON.stringify(updatedEntries)
-            );
+            await setSecureItem("mood_entries", updatedEntries);
 
             // Update state to refresh the UI
             setMoodEntries(updatedEntries);
