@@ -19,10 +19,10 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Audio, AVPlaybackStatus } from "expo-av";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { meditationsData } from "../../data/meditationsData";
+import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
 
 const BACKGROUNDS = [
   require("../../assets/images/meditation-bg-1.jpg"),
@@ -356,15 +356,21 @@ export default function MeditationPlayerScreen() {
     };
 
     try {
-      const storedSessions = await AsyncStorage.getItem("meditation_sessions");
-      const sessions = storedSessions ? JSON.parse(storedSessions) : [];
-      sessions.push(session);
-      await AsyncStorage.setItem(
-        "meditation_sessions",
-        JSON.stringify(sessions)
-      );
+      const sessions =
+        (await getSecureItem<any[]>("meditation_sessions")) || [];
+
+      // Check if sessions is an array before using array methods
+      if (!Array.isArray(sessions)) {
+        // If it's not an array, initialize as empty array
+        await setSecureItem("meditation_sessions", [session]);
+      } else {
+        // Add the new session and save
+        sessions.push(session);
+        await setSecureItem("meditation_sessions", sessions);
+      }
     } catch (error) {
-      // Silent failure
+      console.error("Failed to save meditation session:", error);
+      // Silent failure in UI
     }
   }
 
@@ -424,34 +430,36 @@ export default function MeditationPlayerScreen() {
   // Favorites handling
   const checkFavoriteStatus = async () => {
     try {
-      const favoritesJson = await AsyncStorage.getItem("favorite_meditations");
-      if (favoritesJson) {
-        const favorites = JSON.parse(favoritesJson);
-        setIsFavorite(favorites.includes(id));
+      const favorites = await getSecureItem<string[]>("favorite_meditations");
+      if (favorites && Array.isArray(favorites)) {
+        setIsFavorite(favorites.includes(String(id)));
       }
     } catch (error) {
-      // Silent failure
+      console.error("Failed to check favorite status:", error);
+      // Silent failure in UI
     }
   };
 
   async function toggleFavorite() {
     try {
-      const favoritesJson = await AsyncStorage.getItem("favorite_meditations");
-      const favorites = favoritesJson ? JSON.parse(favoritesJson) : [];
+      const favorites =
+        (await getSecureItem<string[]>("favorite_meditations")) || [];
+
+      const favoritesArray = Array.isArray(favorites) ? favorites : [];
 
       let updatedFavorites;
       if (isFavorite) {
         updatedFavorites = favorites.filter((favId: string) => favId !== id);
       } else {
-        updatedFavorites = [...favorites, id];
+        // Add to favorites
+        updatedFavorites = [...favoritesArray, String(id)];
       }
 
-      await AsyncStorage.setItem(
-        "favorite_meditations",
-        JSON.stringify(updatedFavorites)
-      );
+      // Save updated favorites with secure storage
+      await setSecureItem("favorite_meditations", updatedFavorites);
       setIsFavorite(!isFavorite);
     } catch (error) {
+      console.error("Failed to update favorites:", error);
       // Silent failure
     }
   }

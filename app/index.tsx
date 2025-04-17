@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getSecureItem } from "../utils/secureStorage";
 import { useTheme } from "../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -70,16 +70,12 @@ export default function HomeScreen() {
   // Function to fetch latest mood
   const fetchLatestMood = useCallback(async () => {
     try {
-      const entriesJson = await AsyncStorage.getItem("mood_entries");
-      if (entriesJson) {
-        const entries = JSON.parse(entriesJson);
-        if (entries.length > 0) {
-          setLatestMood(entries[0]); // First entry is the latest
-        } else {
-          setLatestMood(null); // Handle case where entries exist but are empty
-        }
+      const entries = await getSecureItem<MoodEntry[]>("mood_entries");
+
+      if (entries && Array.isArray(entries) && entries.length > 0) {
+        setLatestMood(entries[0]); // First entry is the latest
       } else {
-        setLatestMood(null); // Handle case where no entries key exists
+        setLatestMood(null); // Handle case where no entries exist or entries is empty
       }
     } catch (error) {
       console.error("Failed to fetch mood data:", error);
@@ -420,11 +416,15 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.actionItem}
-              onPress={() => router.push("/(other)/history")}
+              onPress={() => {
+                router.push({
+                  pathname: "/(other)/history",
+                });
+              }}
             >
               <View style={styles.actionIcon}>
                 <Ionicons
-                  name="analytics-outline"
+                  name="bar-chart-outline"
                   size={28}
                   color={theme.accent}
                 />
@@ -434,7 +434,11 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={styles.actionItem}
-              onPress={() => router.push("/(other)/statistics")}
+              onPress={() => {
+                router.push({
+                  pathname: "/(other)/statistics",
+                });
+              }}
             >
               <View style={styles.actionIcon}>
                 <Ionicons

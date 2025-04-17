@@ -402,7 +402,7 @@ export default function StatisticsScreen() {
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.push("/")}
+          onPress={() => router.navigate("/")}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={theme.text} />

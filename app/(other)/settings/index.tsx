@@ -134,7 +134,7 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("/")}>
+        <TouchableOpacity onPress={() => router.navigate("/")}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>

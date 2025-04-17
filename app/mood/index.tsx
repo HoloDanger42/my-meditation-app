@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
 
 // Define the mood options
 const moodOptions = [
@@ -40,9 +40,13 @@ export default function MoodScreen() {
     }
 
     try {
-      // Get current entries
-      const entriesJson = await AsyncStorage.getItem("mood_entries");
-      const entries = entriesJson ? JSON.parse(entriesJson) : [];
+      // Make sure to get entries as an array
+      let entries = await getSecureItem<any[]>("mood_entries");
+
+      // If entries is null/undefined or not an array, initialize it as an empty array
+      if (!entries || !Array.isArray(entries)) {
+        entries = [];
+      }
 
       // Create new entry
       const newEntry = {
@@ -53,11 +57,8 @@ export default function MoodScreen() {
         timestamp: new Date().toISOString(),
       };
 
-      // Save updated entries
-      await AsyncStorage.setItem(
-        "mood_entries",
-        JSON.stringify([newEntry, ...entries])
-      );
+      // Save updated entries with secure encryption
+      await setSecureItem("mood_entries", [newEntry, ...entries]);
 
       Alert.alert("Success", "Your mood has been logged!", [
         { text: "OK", onPress: () => router.push("/") },

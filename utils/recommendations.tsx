@@ -15,11 +15,6 @@ export async function generatePersonalizedRecommendations() {
       ? JSON.parse(meditationSessionsJson)
       : [];
 
-    const journalEntriesJson = await AsyncStorage.getItem("journal_entries");
-    const journalData = journalEntriesJson
-      ? JSON.parse(journalEntriesJson)
-      : [];
-
     const dominantMood = calculateDominantMood(moodData);
 
     // Generate recommendations based on mood patterns
@@ -39,7 +34,7 @@ export async function generatePersonalizedRecommendations() {
 }
 function recommendMeditationsBasedOnMood(
   moodData: MoodEntry[],
-  meditationData: MeditationSession[]
+  _meditationData: MeditationSession[]
 ) {
   // Get recent moods (last 3 days)
   const threeDaysAgo = new Date();
@@ -82,14 +77,6 @@ function recommendMeditationsBasedOnMood(
     dominantMood && moodMeditationMap[dominantMood]
       ? moodMeditationMap[dominantMood]
       : ["mindfulness", "beginner"]; // default if no dominant mood
-
-  // Consider previously completed meditations (avoid repeating too soon)
-  const recentlyCompleted = meditationData
-    .filter(
-      (session) => typeof session.rating === "number" && session.rating >= 4
-    ) // Focus on highly rated sessions
-    .slice(0, 5)
-    .map((session) => session.meditationId);
 
   // Consider time of day for recommendations
   const currentHour = new Date().getHours();

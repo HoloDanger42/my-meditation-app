@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { getSecureItem } from "../../../utils/secureStorage";
 
 interface Session {
   id: number;
@@ -27,13 +27,18 @@ export default function SessionHistoryScreen() {
   useEffect(() => {
     async function fetchSessions() {
       try {
-        const storedSessions = await AsyncStorage.getItem(
+        const storedSessions = await getSecureItem<Session[]>(
           "meditation_sessions"
         );
-        const sessions = storedSessions ? JSON.parse(storedSessions) : [];
-        setSessions(sessions.reverse());
+
+        if (storedSessions && Array.isArray(storedSessions)) {
+          setSessions([...storedSessions].reverse());
+        } else {
+          setSessions([]);
+        }
       } catch (error) {
         console.error("Failed to fetch sessions: ", error);
+        setSessions([]);
       }
     }
     fetchSessions();
@@ -89,7 +94,7 @@ export default function SessionHistoryScreen() {
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.push("/")}
+          onPress={() => router.navigate("/")}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={theme.text} />

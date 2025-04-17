@@ -10,10 +10,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
 
 interface MoodEntry {
   id: number;
@@ -51,12 +51,9 @@ export default function NewJournalEntryScreen() {
   useEffect(() => {
     const fetchLatestMood = async () => {
       try {
-        const entriesJson = await AsyncStorage.getItem("mood_entries");
-        if (entriesJson) {
-          const entries = JSON.parse(entriesJson);
-          if (entries.length > 0) {
-            setLatestMood(entries[0]);
-          }
+        const entries = await getSecureItem<MoodEntry[]>("mood_entries");
+        if (entries && entries.length > 0) {
+          setLatestMood(entries[0]);
         }
       } catch (error) {
         console.error("Failed to fetch mood data:", error);
@@ -70,9 +67,11 @@ export default function NewJournalEntryScreen() {
   useEffect(() => {
     const loadRecentSessions = async () => {
       try {
-        const sessionsJson = await AsyncStorage.getItem("meditation_sessions");
-        if (sessionsJson) {
-          const sessions = JSON.parse(sessionsJson);
+        const sessions = await getSecureItem<MeditationSession[]>(
+          "meditation_sessions"
+        );
+
+        if (sessions && Array.isArray(sessions)) {
           // Get only recent sessions (last 7 days)
           const oneWeekAgo = new Date();
           oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -106,8 +105,7 @@ export default function NewJournalEntryScreen() {
       setIsSaving(true);
 
       // Get existing entries
-      const entriesJson = await AsyncStorage.getItem("journal_entries");
-      const entries = entriesJson ? JSON.parse(entriesJson) : [];
+      const entries = (await getSecureItem<any[]>("journal_entries")) || [];
 
       // Create new entry
       const newEntry = {
@@ -120,10 +118,7 @@ export default function NewJournalEntryScreen() {
       };
 
       // Save updated entries
-      await AsyncStorage.setItem(
-        "journal_entries",
-        JSON.stringify([newEntry, ...entries])
-      );
+      await setSecureItem("journal_entries", [newEntry, ...entries]);
 
       Alert.alert("Success", "Your journal entry has been saved!", [
         { text: "OK", onPress: () => router.replace("/journal") },

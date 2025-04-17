@@ -8,10 +8,10 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
 
 interface JournalEntry {
   id: number;
@@ -32,12 +32,19 @@ export default function JournalScreen() {
 
   const loadEntries = async () => {
     try {
-      const entriesJson = await AsyncStorage.getItem("journal_entries");
-      if (entriesJson) {
-        setEntries(JSON.parse(entriesJson));
+      const journalEntries = await getSecureItem<JournalEntry[]>(
+        "journal_entries"
+      );
+
+      // Handle null/undefined or non-array results
+      if (journalEntries && Array.isArray(journalEntries)) {
+        setEntries(journalEntries);
+      } else {
+        setEntries([]);
       }
     } catch (error) {
       console.error("Failed to load journal entries: ", error);
+      setEntries([]); // Ensure entries is at least an empty array on error
     }
   };
 
@@ -55,10 +62,7 @@ export default function JournalScreen() {
               const updatedEntries = entries.filter(
                 (entry) => entry.id !== entryId
               );
-              await AsyncStorage.setItem(
-                "journal_entries",
-                JSON.stringify(updatedEntries)
-              );
+              await setSecureItem("journal_entries", updatedEntries);
               setEntries(updatedEntries);
             } catch (error) {
               console.error("Failed to delete journal entry: ", error);
@@ -87,13 +91,17 @@ export default function JournalScreen() {
       }
     >
       <View style={styles.entryHeader}>
-        <Text style={[styles.entryTitle, { color: theme.text }]}>{item.title}</Text>
+        <Text style={[styles.entryTitle, { color: theme.text }]}>
+          {item.title}
+        </Text>
         <TouchableOpacity onPress={() => deleteEntry(item.id)}>
           <Ionicons name="trash-outline" size={20} color="#FF6347" />
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.timestamp, { color: theme.textTertiary }]}>{formatDate(item.timestamp)}</Text>
+      <Text style={[styles.timestamp, { color: theme.textTertiary }]}>
+        {formatDate(item.timestamp)}
+      </Text>
 
       {item.mood && (
         <View style={styles.moodTag}>
@@ -109,11 +117,16 @@ export default function JournalScreen() {
               color={item.mood.mood.color}
             />
           </View>
-          <Text style={[styles.moodText, { color: theme.textSecondary }]}>{item.mood.mood.name}</Text>
+          <Text style={[styles.moodText, { color: theme.textSecondary }]}>
+            {item.mood.mood.name}
+          </Text>
         </View>
       )}
 
-      <Text style={[styles.preview, { color: theme.textSecondary }]} numberOfLines={2}>
+      <Text
+        style={[styles.preview, { color: theme.textSecondary }]}
+        numberOfLines={2}
+      >
         {item.content}
       </Text>
     </TouchableOpacity>

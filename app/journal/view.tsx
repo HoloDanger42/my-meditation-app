@@ -7,10 +7,10 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { getSecureItem } from "../../utils/secureStorage";
 
 interface JournalEntry {
   id: number;
@@ -42,21 +42,22 @@ export default function JournalViewScreen() {
 
     const loadEntry = async () => {
       try {
-        const entriesJson = await AsyncStorage.getItem("journal_entries");
-        if (entriesJson) {
-          const entries = JSON.parse(entriesJson);
+        const entries = await getSecureItem<JournalEntry[]>("journal_entries");
+
+        if (entries && Array.isArray(entries)) {
           const foundEntry = entries.find(
             (e: JournalEntry) => e.id.toString() === id.toString()
           );
+
           if (foundEntry) {
             setEntry(foundEntry);
 
             if (foundEntry.relatedSessionId) {
-              const sessionsJson = await AsyncStorage.getItem(
+              const sessions = await getSecureItem<MeditationSession[]>(
                 "meditation_sessions"
               );
-              if (sessionsJson) {
-                const sessions = JSON.parse(sessionsJson);
+
+              if (sessions && Array.isArray(sessions)) {
                 const foundSession = sessions.find(
                   (s: MeditationSession) => s.id === foundEntry.relatedSessionId
                 );
