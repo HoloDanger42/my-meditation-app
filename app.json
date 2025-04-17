@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "googleServicesFile": "android/app/google-services.json",
+      "googleServicesFile": "./config/google-services.json",
       "package": "com.holodanger.mymeditationapp"
     },
     "web": {
