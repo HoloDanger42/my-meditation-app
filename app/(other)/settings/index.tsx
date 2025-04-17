@@ -7,7 +7,6 @@ import { StatusBar } from "expo-status-bar";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const { isDark, setDarkMode, theme } = useTheme();
 
   const settingsSections = [
@@ -30,46 +29,12 @@ export default function SettingsScreen() {
         },
       ],
     },
-    {
-      title: "Account",
-      items: [
-        {
-          id: "profile",
-          title: "Edit Profile",
-          type: "link",
-          icon: "person-outline",
-        },
-        {
-          id: "privacy",
-          title: "Privacy Settings",
-          type: "link",
-          icon: "lock-closed-outline",
-        },
-      ],
-    },
-    {
-      title: "Support",
-      items: [
-        {
-          id: "help",
-          title: "Help Center",
-          type: "link",
-          icon: "help-circle-outline",
-        },
-        {
-          id: "feedback",
-          title: "Send Feedback",
-          type: "link",
-          icon: "chatbox-outline",
-        },
-      ],
-    },
   ];
 
   const renderItem = (item: any) => {
     if (item.type === "switch") {
       return (
-        <View key={item.id} style={styles.settingItem}>
+        <View key={item.id} style={[styles.settingItem, { height: 54 }]}>
           <Text style={[styles.settingText, { color: theme.text }]}>
             {item.title}
           </Text>
@@ -85,7 +50,7 @@ export default function SettingsScreen() {
       return (
         <TouchableOpacity
           key={item.id}
-          style={styles.settingItem}
+          style={[styles.settingItem, { height: 54 }]}
           onPress={item.onPress}
         >
           <Ionicons name={item.icon} size={22} color={theme.accent} />
@@ -169,7 +134,7 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push("/")}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>
