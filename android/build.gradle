@@ -16,7 +16,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.google.gms:google-services:4.4.1'
-        classpath('com.android.tools.build:gradle:8.6.0') // Specify AGP version
+        classpath('com.android.tools.build:gradle:8.6.0') // Match Expo's expected version
         classpath('com.facebook.react:react-native-gradle-plugin')
         classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
     }

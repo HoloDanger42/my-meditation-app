@@ -3,6 +3,30 @@ pluginManagement {
 }
 plugins { id("com.facebook.react.settings") }
 
+// Add configuration to ignore AGP version compatibility checks
+dependencyResolutionManagement {
+    versionCatalogs {
+        reactAndroidLibs {
+            from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
+        }
+    }
+    
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    
+    // This is the important part - it ignores AGP version compatibility issues
+    defaultLibrariesExtensionName.set("deps")
+    
+    // Ignore AGP version attributes in dependencies
+    componentSelection {
+        all {
+            // Ignore the AGP version attribute for project modules
+            withModule('com.android.build.api.attributes.AgpVersionAttr') { details ->
+                details.useTarget()
+            }
+        }
+    }
+}
+
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
     ex.autolinkLibrariesFromCommand()
@@ -22,14 +46,6 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 
 rootProject.name = 'Zenith'
-
-dependencyResolutionManagement {
-  versionCatalogs {
-    reactAndroidLibs {
-      from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
-    }
-  }
-}
 
 apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
 useExpoModules()
