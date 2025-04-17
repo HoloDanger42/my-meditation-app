@@ -1,7 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: 'com.google.gms.google-services'
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -95,14 +94,6 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
-    
-    // Added configuration for using prebuilt react-native-reanimated libraries
-    sourceSets {
-        main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
-        }
-    }
-    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -182,9 +173,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-
-    // Add Firebase Core
-    implementation platform('com.google.firebase:firebase-bom:31.5.0')
-    implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-messaging'
 }
+
+apply plugin: 'com.google.gms.google-services'

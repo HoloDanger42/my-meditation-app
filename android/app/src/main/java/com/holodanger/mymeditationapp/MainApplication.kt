@@ -2,7 +2,6 @@ package com.holodanger.mymeditationapp
 
 import android.app.Application
 import android.content.res.Configuration
-import android.util.Log
 
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -16,8 +15,6 @@ import com.facebook.soloader.SoLoader
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
-
-import com.google.firebase.FirebaseApp
 
 class MainApplication : Application(), ReactApplication {
 
@@ -44,15 +41,6 @@ class MainApplication : Application(), ReactApplication {
     get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
 
   override fun onCreate() {
-    try {
-      // Initialize Firebase with logging
-      FirebaseApp.initializeApp(this)
-      Log.d("FirebaseInit", "Firebase initialized successfully")
-    } catch (e: Exception) {
-      Log.e("FirebaseInit", "Failed to initialize Firebase: ${e.message}")
-      e.printStackTrace()
-    }
-    
     super.onCreate()
     SoLoader.init(this, OpenSourceMergedSoMapping)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
