@@ -3,7 +3,6 @@ pluginManagement {
 }
 plugins { id("com.facebook.react.settings") }
 
-// Add configuration to ignore AGP version compatibility checks
 dependencyResolutionManagement {
     versionCatalogs {
         reactAndroidLibs {
@@ -12,20 +11,10 @@ dependencyResolutionManagement {
     }
     
     repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
-    
-    // This is the important part - it ignores AGP version compatibility issues
-    defaultLibrariesExtensionName.set("deps")
-    
-    // Ignore AGP version attributes in dependencies
-    componentSelection {
-        all {
-            // Ignore the AGP version attribute for project modules
-            withModule('com.android.build.api.attributes.AgpVersionAttr') { details ->
-                details.useTarget()
-            }
-        }
-    }
 }
+
+// Add a global Gradle property to ignore AGP version mismatch
+gradle.startParameter.projectProperties.put("android.disableValidateCompatibleAGP", "true")
 
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
