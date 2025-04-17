@@ -328,9 +328,7 @@ export default function HomeScreen() {
       fontSize: 14,
       color: theme.textSecondary,
     },
-    recommendationsSection: {
-      marginBottom: 15,
-    },
+    recommendationsSection: {},
     recommendationsSectionTitle: {
       fontSize: 14,
       fontWeight: "600",
@@ -340,12 +338,40 @@ export default function HomeScreen() {
     recommendedItem: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 10,
     },
     recommendedItemText: {
       fontSize: 14,
       color: theme.text,
       marginLeft: 10,
+    },
+    breathingStatsCard: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      padding: 20,
+      marginHorizontal: 20,
+      marginBottom: 20,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    statsRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    statItem: {
+      alignItems: "center",
+    },
+    statValue: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: theme.accent,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 5,
     },
   });
 
@@ -485,6 +511,9 @@ export default function HomeScreen() {
 
         {/* Personalized Recommendations */}
         <PersonalizedRecommendations styles={styles} />
+
+        {/* Breathing Stats */}
+        <BreathingStats styles={styles} />
       </ScrollView>
     </View>
   );
@@ -546,3 +575,54 @@ function PersonalizedRecommendations({ styles }: { styles: StylesProps }) {
     </View>
   );
 }
+
+const BreathingStats = ({ styles }: { styles: StylesProps }) => {
+  const [totalTime, setTotalTime] = useState(0);
+  const [sessions, setSessions] = useState(0);
+  const { theme } = useTheme();
+  const router = useRouter();
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const time = (await getSecureItem<number>("total_breathing_time")) || 0;
+        const breathingSessions =
+          (await getSecureItem<any[]>("breathing_sessions")) || [];
+
+        setTotalTime(time);
+        setSessions(breathingSessions.length);
+      } catch (error) {
+        console.error("Failed to load breathing stats:", error);
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m`;
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.breathingStatsCard}
+      onPress={() => router.push("/tools/breathing-history")}
+    >
+      <Text style={styles.recommendationsTitle}>Breathing Practice</Text>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{formatTime(totalTime)}</Text>
+          <Text style={styles.statLabel}>Total Time</Text>
+        </View>
+
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{sessions}</Text>
+          <Text style={styles.statLabel}>Sessions</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};

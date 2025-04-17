@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
@@ -10,48 +16,79 @@ export default function ToolsScreen() {
   const { theme, isDark } = useTheme();
 
   const tools = [
-    { id: "breathing", title: "Breathing Exercises", icon: "pulse-outline" },
+    {
+      id: "breathing",
+      name: "Deep Breathing Exercise",
+      description: "Guided breathing patterns to reduce stress and anxiety",
+      icon: "medical",
+    },
+    {
+      id: "breathing-history", // New entry for history
+      name: "Breathing History",
+      description: "View your breathing exercise statistics",
+      icon: "bar-chart",
+    },
   ];
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      paddingTop: 60,
-      paddingHorizontal: 20,
       backgroundColor: theme.background,
     },
     header: {
-      marginBottom: 20,
+      padding: 20,
+      paddingTop: 60,
+      backgroundColor: theme.card,
     },
     title: {
       fontSize: 24,
       fontWeight: "bold",
-      marginBottom: 10,
       color: theme.text,
+      marginBottom: 8,
     },
     subtitle: {
       fontSize: 16,
       color: theme.textSecondary,
-      marginBottom: 20,
+    },
+    content: {
+      flex: 1,
+      padding: 20,
     },
     toolItem: {
       flexDirection: "row",
       alignItems: "center",
-      padding: 15,
+      padding: 20,
       backgroundColor: theme.card,
+      borderRadius: 12,
       marginBottom: 15,
-      borderRadius: 10,
-      shadowColor: isDark ? "#000" : "#000",
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: isDark ? 0.3 : 0.1,
       shadowRadius: 2,
       elevation: isDark ? 3 : 1,
     },
+    toolIcon: {
+      backgroundColor: theme.accentLight,
+      padding: 12,
+      borderRadius: 10,
+      marginRight: 15,
+    },
+    toolTextContainer: {
+      flex: 1,
+      paddingRight: 10,
+    },
     toolName: {
       fontSize: 16,
-      flex: 1,
-      marginLeft: 15,
+      fontWeight: "500",
       color: theme.text,
+    },
+    toolDescription: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginTop: 4,
+    },
+    chevronContainer: {
+      paddingLeft: 10,
     },
   });
 
@@ -66,21 +103,34 @@ export default function ToolsScreen() {
         </Text>
       </View>
 
-      {tools.map((tool) => (
-        <TouchableOpacity
-          key={tool.id}
-          style={styles.toolItem}
-          onPress={() => router.push(`/tools/${tool.id}` as any)}
-        >
-          <Ionicons name={tool.icon as any} size={24} color={theme.accent} />
-          <Text style={styles.toolName}>{tool.title}</Text>
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={theme.textTertiary}
-          />
-        </TouchableOpacity>
-      ))}
+      <ScrollView style={styles.content}>
+        {tools.map((tool) => (
+          <TouchableOpacity
+            key={tool.id}
+            style={styles.toolItem}
+            onPress={() => router.push(`/tools/${tool.id}`)}
+          >
+            <View style={styles.toolIcon}>
+              <Ionicons
+                name={tool.icon as any}
+                size={24}
+                color={theme.accent}
+              />
+            </View>
+            <View style={styles.toolTextContainer}>
+              <Text style={styles.toolName}>{tool.name}</Text>
+              <Text style={styles.toolDescription}>{tool.description}</Text>
+            </View>
+            <View style={styles.chevronContainer}>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={theme.textSecondary}
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 }
