@@ -16,14 +16,13 @@ buildscript {
     }
     dependencies {
         classpath 'com.google.gms:google-services:4.4.1'
-        classpath('com.android.tools.build:gradle:8.6.0') // Match Expo's expected version
+        classpath('com.android.tools.build:gradle')
         classpath('com.facebook.react:react-native-gradle-plugin')
         classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
     }
 }
 
 apply plugin: "com.facebook.react.rootproject"
-apply from: file("fix-agp-compatibility.gradle") // Apply our AGP version compatibility fix
 
 allprojects {
     repositories {
