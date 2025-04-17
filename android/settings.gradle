@@ -9,12 +9,7 @@ dependencyResolutionManagement {
             from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
         }
     }
-    
-    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
 }
-
-// Add a global Gradle property to ignore AGP version mismatch
-gradle.startParameter.projectProperties.put("android.disableValidateCompatibleAGP", "true")
 
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {

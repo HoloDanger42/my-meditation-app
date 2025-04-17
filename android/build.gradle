@@ -23,6 +23,7 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+apply from: file("fix-agp-compatibility.gradle") // Apply our AGP version compatibility fix
 
 allprojects {
     repositories {

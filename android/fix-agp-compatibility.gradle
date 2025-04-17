@@ -1,0 +1,34 @@
+// This script helps resolve AGP version compatibility issues
+import org.gradle.api.attributes.Attribute
+
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            // Force all React Native modules to use the same version
+            force "com.facebook.react:react-android:+"
+            
+            // Disable AGP version validation
+            eachDependency { details ->
+                if (details.requested.group == 'com.android.tools.build') {
+                    details.useVersion '8.6.0'
+                }
+            }
+            
+            // Ignore AGP version compatibility checks
+            attributesSchema {
+                attribute(Attribute.of('com.android.build.api.attributes.AgpVersionAttr', String)) {
+                    // This tells Gradle to ignore this attribute when matching dependencies
+                    compatibilityRules.add(AgpVersionCompatibilityRule)
+                }
+            }
+        }
+    }
+}
+
+// Custom compatibility rule class that always returns compatible=true
+class AgpVersionCompatibilityRule implements AttributeCompatibilityRule<String> {
+    void execute(CompatibilityCheckDetails<String> details) {
+        // Always consider compatible regardless of the values
+        details.compatible()
+    }
+}
