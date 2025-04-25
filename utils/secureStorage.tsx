@@ -19,58 +19,53 @@ const debouncedSync = debounce(syncItemToFirestore, 2000);
  */
 export async function getSecureItem<T>(key: string): Promise<T | null> {
   try {
-    if (!checkedKeys.has(key)) {
-      const firestoreResult = await fetchItemFromFirestore(key);
-      checkedKeys.add(key); // Mark as checked
+    // 1. Check local storage first
+    const localData = await AsyncStorage.getItem(key);
 
-      if (firestoreResult) {
-        const localData = await AsyncStorage.getItem(key);
-        let shouldUpdateLocal = !localData; // Update if local doesn't exist
-
-        if (localData && localData.startsWith(NEW_ENCRYPTION_PREFIX)) {
-          // Firestore data is different from local data
-          const localEncrypted = localData.substring(
-            NEW_ENCRYPTION_PREFIX.length
-          );
-          if (localEncrypted !== firestoreResult.data) {
-            console.log(
-              `Firestore data for ${key} seems newer. Updating local.`
-            );
-            shouldUpdateLocal = true;
-          }
+    if (localData) {
+      // Data found locally, process it
+      if (localData.startsWith(NEW_ENCRYPTION_PREFIX)) {
+        const encryptedData = localData.substring(NEW_ENCRYPTION_PREFIX.length);
+        return await decryptData(encryptedData);
+      } else if (localData.startsWith(OLD_ENCRYPTION_PREFIX)) {
+        console.log(`Found legacy encrypted data for ${key}, migrating...`);
+        // Handle migration or return null/error as appropriate
+        // For now, let's assume migration means setting it securely and returning null for this read
+        // Or perhaps better, attempt decryption if possible, or just clear it
+        await removeSecureItem(key); // Remove old format
+        return null; // Indicate data needs re-setting or is gone
+      } else {
+        // Unencrypted legacy data - migrate it
+        console.log(`Migrating unencrypted ${key} to secure storage...`);
+        let parsedData;
+        try {
+          parsedData = JSON.parse(localData);
+        } catch {
+          parsedData = localData; // Treat as string if not JSON
         }
+        // Encrypt and save, which also triggers Firestore sync
+        await setSecureItem(key, parsedData);
+        // Return the data we just migrated
+        return parsedData;
+      }
+    } else {
+      // 2. No local data found. Check Firestore only if not recently checked.
+      // This prevents fetching from Firestore if we just deleted the item locally.
+      if (!checkedKeys.has(key)) {
+        const firestoreResult = await fetchItemFromFirestore(key);
+        checkedKeys.add(key); // Mark as checked for this session
 
-        if (shouldUpdateLocal) {
+        if (firestoreResult) {
+          // Data found in Firestore, update local storage and return decrypted data
           console.log(`Updating local data for ${key} from Firestore.`);
           const prefixedData = `${NEW_ENCRYPTION_PREFIX}${firestoreResult.data}`;
           await AsyncStorage.setItem(key, prefixedData);
+          // Decrypt the data fetched from Firestore before returning
+          return await decryptData(firestoreResult.data);
         }
       }
-    }
-
-    const data = await AsyncStorage.getItem(key);
-
-    if (!data) return null;
-
-    // Check encryption type
-    if (data.startsWith(NEW_ENCRYPTION_PREFIX)) {
-      // Modern AES encryption
-      const encryptedData = data.substring(NEW_ENCRYPTION_PREFIX.length);
-      return await decryptData(encryptedData);
-    } else if (data.startsWith(OLD_ENCRYPTION_PREFIX)) {
-      console.log(`Found legacy encrypted data for ${key}, migrating...`);
+      // No local data and either no Firestore data or already checked Firestore this session
       return null;
-    } else {
-      // Unencrypted legacy data
-      console.log(`Migrating unencrypted ${key} to secure storage...`);
-      let parsedData;
-      try {
-        parsedData = JSON.parse(data);
-      } catch {
-        parsedData = data;
-      }
-      await setSecureItem(key, parsedData); // Save securely (triggers sync)
-      return parsedData;
     }
   } catch (error) {
     console.error(`Error getting secure item for key ${key}:`, error);

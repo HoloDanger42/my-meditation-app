@@ -522,17 +522,52 @@ export default function HomeScreen() {
 function PersonalizedRecommendations({ styles }: { styles: StylesProps }) {
   const [recommendations, setRecommendations] =
     useState<Recommendations | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
   const { theme } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
     async function loadRecommendations() {
-      const recs = await generatePersonalizedRecommendations();
-      setRecommendations(recs);
+      try {
+        setIsLoading(true);
+        const recs = await Promise.race([
+          generatePersonalizedRecommendations(),
+          new Promise<null>(
+            (resolve) => setTimeout(() => resolve(null), 5000) // 5 second timeout
+          ),
+        ]);
+
+        if (recs) {
+          setRecommendations(recs);
+        } else {
+          setError(true);
+        }
+      } catch (err) {
+        console.error("Failed to load recommendations:", err);
+        setError(true);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     loadRecommendations();
   }, []);
+
+  if (isLoading) {
+    return <ActivityIndicator color={theme.accent} size="small" />;
+  }
+
+  if (error || !recommendations) {
+    return (
+      <View style={styles.recommendationsCard}>
+        <Text style={styles.recommendationsTitle}>Personalized For You</Text>
+        <Text style={styles.insightText}>
+          Unable to load recommendations right now. Check back later.
+        </Text>
+      </View>
+    );
+  }
 
   if (!recommendations) {
     return <ActivityIndicator color={theme.accent} size="small" />;

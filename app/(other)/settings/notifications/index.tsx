@@ -21,6 +21,7 @@ import {
   getSavedReminderTimes,
   cancelScheduledNotification,
 } from "../../../../utils/notifications";
+import { removeSecureItem } from "../../../../utils/secureStorage"; // <-- Import removeSecureItem
 
 // Define prop types for CustomTimePicker
 interface CustomTimePickerProps {
@@ -219,6 +220,7 @@ export default function NotificationSettingsScreen() {
       );
     } else {
       await cancelScheduledNotification("meditation-reminder");
+      await removeSecureItem("meditation_reminder_time"); // <-- Add this line
     }
   };
 
