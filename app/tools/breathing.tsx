@@ -64,18 +64,18 @@ export default function BreathingExerciseScreen() {
   const [counter, setCounter] = useState(4);
   const [isActive, setIsActive] = useState(false);
   const [cycles, setCycles] = useState(0);
-  const [animation, setAnimation] =
-    useState<Animated.CompositeAnimation | null>(null);
   const [selectedTechnique, setSelectedTechnique] =
     useState<BreathingTechnique>(BREATHING_TECHNIQUES[0]);
   const [showTechniqueModal, setShowTechniqueModal] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [totalDuration, setTotalDuration] = useState(0);
+  const [phaseStartTime, setPhaseStartTime] = useState<number>(0);
 
   // Refs
   const animatedValue = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentPhaseRef = useRef<string>(phase);
+  const currentPhaseStartTimeRef = useRef<number>(phaseStartTime);
 
   const router = useRouter();
   const { theme, isDark } = useTheme();
@@ -104,116 +104,41 @@ export default function BreathingExerciseScreen() {
     loadSavedTechnique();
   }, []);
 
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
   // Animation sequences
   const startBreathing = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    const now = Date.now();
+    const initialPhase = "inhale";
+    const initialCounter = selectedTechnique.inhale;
+
+    currentPhaseRef.current = initialPhase;
+    currentPhaseStartTimeRef.current = now;
+
     setIsActive(true);
-    setSessionStartTime(Date.now());
-    beginBreathingCycle();
-  };
+    setSessionStartTime(now);
+    setPhaseStartTime(now);
+    setPhase(initialPhase);
+    setCounter(initialCounter);
+    setCycles(0);
+    setTotalDuration(0);
 
-  const beginBreathingCycle = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    Animated.timing(animatedValue, {
+      toValue: 1.5,
+      duration: selectedTechnique.inhale * 1000,
+      useNativeDriver: true,
+    }).start();
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    // Inhale phase
-    if (phase === "inhale") {
-      setCounter(selectedTechnique.inhale);
-      const inhaleAnim = Animated.timing(animatedValue, {
-        toValue: 1.5, // Expand circle
-        duration: selectedTechnique.inhale * 1000,
-        useNativeDriver: true,
-      });
-
-      setAnimation(inhaleAnim);
-      inhaleAnim.start();
-
-      // Add countdown for inhale phase
-      intervalRef.current = setInterval(() => {
-        setCounter((prevCount) => {
-          const newCount = prevCount - 1;
-          if (newCount <= 0) {
-            clearInterval(intervalRef.current!);
-            intervalRef.current = null;
-            setTimeout(() => {
-              setPhase(selectedTechnique.hold > 0 ? "hold" : "exhale");
-            }, 100);
-          }
-          return newCount;
-        });
-      }, 1000);
-    } else if (phase === "hold") {
-      setCounter(selectedTechnique.hold);
-
-      // Count down during hold phase
-      intervalRef.current = setInterval(() => {
-        setCounter((prevCount) => {
-          const newCount = prevCount - 1;
-          if (newCount <= 0) {
-            clearInterval(intervalRef.current!);
-            intervalRef.current = null;
-            setTimeout(() => {
-              setPhase("exhale");
-            }, 100);
-          }
-          return newCount;
-        });
-      }, 1000);
-    } else if (phase === "exhale") {
-      setCounter(selectedTechnique.exhale);
-      const exhaleAnim = Animated.timing(animatedValue, {
-        toValue: 1, // Contract circle
-        duration: selectedTechnique.exhale * 1000,
-        useNativeDriver: true,
-      });
-
-      setAnimation(exhaleAnim);
-      exhaleAnim.start();
-
-      // After exhale, start next cycle
-      intervalRef.current = setInterval(() => {
-        setCounter((prevCount) => {
-          const newCount = prevCount - 1;
-          if (newCount <= 0) {
-            clearInterval(intervalRef.current!);
-            intervalRef.current = null;
-            setTimeout(() => {
-              if (selectedTechnique.holdAfterExhale) {
-                setPhase("holdAfterExhale");
-              } else {
-                setCycles((prev) => prev + 1);
-                setPhase("inhale");
-              }
-            }, 100);
-          }
-          return newCount;
-        });
-      }, 1000);
-    } else if (phase === "holdAfterExhale") {
-      // For box breathing - hold after exhale
-      setCounter(selectedTechnique.holdAfterExhale || 0);
-
-      intervalRef.current = setInterval(() => {
-        setCounter((prevCount) => {
-          const newCount = prevCount - 1;
-          if (newCount <= 0) {
-            clearInterval(intervalRef.current!);
-            intervalRef.current = null;
-            setTimeout(() => {
-              setCycles((prev) => prev + 1);
-              setPhase("inhale");
-            }, 100);
-          }
-          return newCount;
-        });
-      }, 1000);
-    }
+    intervalRef.current = setInterval(tick, 100);
   };
 
   const stopBreathing = async () => {
@@ -222,25 +147,19 @@ export default function BreathingExerciseScreen() {
       intervalRef.current = null;
     }
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    if (animation) {
-      animation.stop();
-    }
+    animatedValue.stopAnimation();
 
     const resetAnim = Animated.timing(animatedValue, {
       toValue: 1,
-      duration: 100, // Short duration
+      duration: 300,
       useNativeDriver: true,
     });
 
     // Calculate session duration and save record
+    let finalDuration = 0;
     if (sessionStartTime) {
-      const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
-      setTotalDuration(duration);
+      finalDuration = Math.floor((Date.now() - sessionStartTime) / 1000);
+      setTotalDuration(finalDuration);
 
       try {
         // Save breathing session
@@ -248,7 +167,7 @@ export default function BreathingExerciseScreen() {
           id: Date.now(),
           techniqueId: selectedTechnique.id,
           techniqueName: selectedTechnique.name,
-          duration,
+          duration: finalDuration,
           cycles,
           timestamp: new Date().toISOString(),
         };
@@ -264,7 +183,7 @@ export default function BreathingExerciseScreen() {
         // Update total breathing time
         const totalTime =
           ((await getSecureItem<number>("total_breathing_time")) || 0) +
-          duration;
+          finalDuration;
         await setSecureItem("total_breathing_time", totalTime);
 
         // Save preferrred technique
@@ -275,19 +194,131 @@ export default function BreathingExerciseScreen() {
     }
 
     resetAnim.start(() => {
+      currentPhaseRef.current = "inhale";
+      currentPhaseStartTimeRef.current = 0;
+
       setIsActive(false);
       setPhase("inhale");
       setCounter(selectedTechnique.inhale);
       setSessionStartTime(null);
+      setPhaseStartTime(0);
     });
   };
 
-  // Effect to manage breathing cycle
-  useEffect(() => {
-    if (isActive) {
-      beginBreathingCycle();
+  const tick = () => {
+    const now = Date.now();
+    const localPhase = currentPhaseRef.current;
+    const localPhaseStartTime = currentPhaseStartTimeRef.current;
+    const elapsedInPhase = (now - localPhaseStartTime) / 1000;
+
+    let currentPhaseDuration = 0;
+    let nextPhase: string | null = null;
+    let startNextAnimation: (() => void) | null = null;
+    let incrementCycle = false;
+
+    // Determine current phase duration and next phase
+    switch (localPhase) {
+      case "inhale":
+        currentPhaseDuration = selectedTechnique.inhale;
+        if (elapsedInPhase >= currentPhaseDuration) {
+          nextPhase = selectedTechnique.hold > 0 ? "hold" : "exhale";
+          if (nextPhase === "exhale") {
+            startNextAnimation = () =>
+              Animated.timing(animatedValue, {
+                toValue: 1,
+                duration: selectedTechnique.exhale * 1000,
+                useNativeDriver: true,
+              }).start();
+          }
+        }
+        break;
+      case "hold":
+        currentPhaseDuration = selectedTechnique.hold;
+        if (elapsedInPhase >= currentPhaseDuration) {
+          nextPhase = "exhale";
+          startNextAnimation = () =>
+            Animated.timing(animatedValue, {
+              toValue: 1,
+              duration: selectedTechnique.exhale * 1000,
+              useNativeDriver: true,
+            }).start();
+        }
+        break;
+      case "exhale":
+        currentPhaseDuration = selectedTechnique.exhale;
+        if (elapsedInPhase >= currentPhaseDuration) {
+          nextPhase = selectedTechnique.holdAfterExhale
+            ? "holdAfterExhale"
+            : "inhale";
+          incrementCycle = true;
+          if (nextPhase === "inhale") {
+            startNextAnimation = () =>
+              Animated.timing(animatedValue, {
+                toValue: 1.5,
+                duration: selectedTechnique.inhale * 1000,
+                useNativeDriver: true,
+              }).start();
+          }
+        }
+        break;
+      case "holdAfterExhale":
+        currentPhaseDuration = selectedTechnique.holdAfterExhale || 0;
+        if (elapsedInPhase >= currentPhaseDuration) {
+          nextPhase = "inhale";
+          startNextAnimation = () =>
+            Animated.timing(animatedValue, {
+              toValue: 1.5,
+              duration: selectedTechnique.inhale * 1000,
+              useNativeDriver: true,
+            }).start();
+        }
+        break;
     }
-  }, [phase]);
+
+    // Update countdown timer display
+    const remainingInPhase = Math.max(0, currentPhaseDuration - elapsedInPhase);
+    setCounter(Math.ceil(remainingInPhase));
+
+    // Update total duration display
+    if (sessionStartTime) {
+      setTotalDuration(Math.floor((now - sessionStartTime) / 1000));
+    }
+
+    // Transition to next phase if needed
+    if (nextPhase) {
+      currentPhaseRef.current = nextPhase;
+      currentPhaseStartTimeRef.current = now;
+
+      setPhase(nextPhase);
+      setPhaseStartTime(now);
+
+      if (incrementCycle) {
+        setCycles((prev) => prev + 1);
+      }
+
+      // Update counter for the *start* of the new phase
+      let nextCounter = 0;
+      switch (nextPhase) {
+        case "inhale":
+          nextCounter = selectedTechnique.inhale;
+          break;
+        case "hold":
+          nextCounter = selectedTechnique.hold;
+          break;
+        case "exhale":
+          nextCounter = selectedTechnique.exhale;
+          break;
+        case "holdAfterExhale":
+          nextCounter = selectedTechnique.holdAfterExhale || 0;
+          break;
+      }
+      setCounter(nextCounter);
+
+      if (startNextAnimation) {
+        startNextAnimation();
+      }
+    }
+  };
 
   // Change technique handler
   const selectTechnique = (technique: BreathingTechnique) => {
@@ -295,6 +326,10 @@ export default function BreathingExerciseScreen() {
     setCounter(technique.inhale);
     setPhase("inhale");
     setShowTechniqueModal(false);
+
+    if (!isActive) {
+      currentPhaseRef.current = "inhale";
+    }
   };
 
   const styles = StyleSheet.create({

@@ -505,7 +505,6 @@ export default function MeditationPlayerScreen() {
     initializeAudio();
 
     return () => {
-      if (sound) sound.unloadAsync();
       if (timerRef.current) clearInterval(timerRef.current);
       if (breathingAnimationRef.current) breathingAnimationRef.current.stop();
     };
@@ -538,20 +537,6 @@ export default function MeditationPlayerScreen() {
           <TouchableOpacity
             style={styles.iconButton}
             onPress={async () => {
-              const currentSound = sound;
-              if (currentSound) {
-                setIsPlaying(false);
-                try {
-                  await cleanupAudio(currentSound);
-                  setSound(null);
-                } catch (error) {
-                  console.error(
-                    "Error cleaning up audio on back press:",
-                    error
-                  );
-                  setSound(null);
-                }
-              }
               router.back();
             }}
           >

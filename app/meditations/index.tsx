@@ -46,53 +46,10 @@ export default function MeditationListScreen() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [favorites, setFavorites] = useState<string[]>([]);
   const { theme, isDark } = useTheme();
-  const [actualDurations, setActualDurations] = useState<
-    Record<number, number>
-  >({});
-  const [loadingDurations, setLoadingDurations] = useState(true);
 
   useEffect(() => {
     loadFavorites();
-    loadActualDurations();
   }, []);
-
-  const loadActualDurations = async () => {
-    setLoadingDurations(true);
-
-    const durations: Record<number, number> = {};
-
-    // Use Promise.all to load durations in parallel
-    await Promise.all(
-      meditationsArray.map(async (meditation) => {
-        try {
-          const { sound } = await Audio.Sound.createAsync(meditation.audio, {
-            shouldPlay: false,
-          });
-
-          const status = await sound.getStatusAsync();
-
-          if (status.isLoaded) {
-            // Convert milliseconds to seconds and round up
-            const durationSeconds = Math.ceil(status.durationMillis! / 1000);
-            durations[meditation.id] = durationSeconds;
-          }
-
-          // Clean up sound object to prevent memory leaks
-          await sound.unloadAsync();
-        } catch (error) {
-          console.error(
-            `Error loading duration for meditation ${meditation.id}:`,
-            error
-          );
-          // Use fallback duration from data
-          durations[meditation.id] = meditation.duration;
-        }
-      })
-    );
-
-    setActualDurations(durations);
-    setLoadingDurations(false);
-  };
 
   const loadFavorites = async () => {
     try {
@@ -261,7 +218,7 @@ export default function MeditationListScreen() {
     item: (typeof meditationsArray)[0];
   }) => {
     const isFavorite = favorites.includes(item.id.toString());
-    const duration = actualDurations[item.id] || item.duration;
+    const displayDuration = item.duration;
 
     return (
       <TouchableOpacity
@@ -282,17 +239,9 @@ export default function MeditationListScreen() {
                 size={14}
                 color={theme.textTertiary}
               />
-              {loadingDurations ? (
-                <ActivityIndicator
-                  size="small"
-                  color={theme.textTertiary}
-                  style={styles.loadingIndicator}
-                />
-              ) : (
-                <Text style={styles.durationText}>
-                  {formatDuration(duration)}
-                </Text>
-              )}
+              <Text style={styles.durationText}>
+                {formatDuration(displayDuration)}
+              </Text>
             </View>
             <View style={styles.categoryTag}>
               <Text style={styles.categoryTagText}>
