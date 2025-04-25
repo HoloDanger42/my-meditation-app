@@ -10,12 +10,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Image,
-  Keyboard,
-  Touchable,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useRouter, Link } from "expo-router";
+import { Link } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -40,7 +37,10 @@ export default function LoginScreen() {
       await login(email, password);
     } catch (error: any) {
       let message = "Login failed";
-      if (error.code === "auth/user-not-found") {
+      if (
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/wrong-password"
+      ) {
         message = "Invalid email or password";
       } else if (error.code === "auth/invalid-email") {
         message = "Please enter a valid email";
@@ -86,7 +86,7 @@ export default function LoginScreen() {
       borderRadius: 8,
       padding: 15,
       marginBottom: 15,
-      backgroundColor: theme.inputBackground,
+      backgroundColor: theme.inputBackground || theme.card,
       color: theme.text,
     },
     passwordContainer: {
@@ -94,7 +94,7 @@ export default function LoginScreen() {
       borderWidth: 1,
       borderColor: theme.cardBorder,
       borderRadius: 8,
-      backgroundColor: theme.inputBackground,
+      backgroundColor: theme.inputBackground || theme.card,
       marginBottom: 15,
       alignItems: "center",
     },

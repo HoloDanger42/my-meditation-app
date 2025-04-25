@@ -95,7 +95,7 @@ export default function SignupScreen() {
       borderRadius: 8,
       padding: 15,
       marginBottom: 15,
-      backgroundColor: theme.inputBackground,
+      backgroundColor: theme.inputBackground || theme.card,
       color: theme.text,
     },
     passwordContainer: {
@@ -103,7 +103,7 @@ export default function SignupScreen() {
       borderWidth: 1,
       borderColor: theme.cardBorder,
       borderRadius: 8,
-      backgroundColor: theme.inputBackground,
+      backgroundColor: theme.inputBackground || theme.card,
       marginBottom: 15,
       alignItems: "center",
     },

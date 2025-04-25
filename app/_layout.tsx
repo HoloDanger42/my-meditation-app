@@ -1,8 +1,13 @@
-import { Tabs } from "expo-router";
+import { Stack, Tabs } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { migrateToEncryption } from "../utils/secureStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { performInitialSync } from "../utils/firestoreSync";
 
 function TabsNavigator() {
   const { theme, isDark } = useTheme();
@@ -72,6 +77,12 @@ function TabsNavigator() {
           name="(other)"
           options={{
             href: null, // This prevents the tab from appearing
+          }}
+        />
+        <Tabs.Screen
+          name="(auth)"
+          options={{
+            href: null,
           }}
         />
       </Tabs>
