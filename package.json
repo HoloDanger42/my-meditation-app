@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "fix-reanimated": "node ./scripts/fix-reanimated.js",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js && node ./scripts/post-prebuild.js",
     "android": "expo run:android && node ./scripts/post-prebuild.js",

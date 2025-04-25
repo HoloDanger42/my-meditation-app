@@ -8,6 +8,11 @@ import React, { useEffect, useState } from "react";
 import { migrateToEncryption } from "../utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { performInitialSync } from "../utils/firestoreSync";
+// Import and initialize Firebase at the app root level
+import initializeFirebase from "../utils/firebaseInit";
+
+// Initialize Firebase as early as possible
+initializeFirebase();
 
 function TabsNavigator() {
   const { theme, isDark } = useTheme();
@@ -90,10 +95,134 @@ function TabsNavigator() {
   );
 }
 
+function RootNavigation() {
+  const { user, initializing } = useAuth();
+  const { theme } = useTheme();
+  const [isFirstLaunch, setIsFirstLaunch] = useState(true);
+  const [checkingFirstLaunch, setCheckingFirstLaunch] = useState(true);
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
+  
+  // Check if it's the first launch
+  useEffect(() => {
+    const checkFirstLaunch = async () => {
+      try {
+        const hasLaunched = await AsyncStorage.getItem("hasLaunched");
+        if (hasLaunched === null) {
+          await AsyncStorage.setItem("hasLaunched", "true");
+          setIsFirstLaunch(true);
+        } else {
+          setIsFirstLaunch(false);
+        }
+      } catch (error) {
+        console.error("Error checking first launch:", error);
+        setIsFirstLaunch(false);
+      } finally {
+        setCheckingFirstLaunch(false);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      console.warn("First launch check timed out.");
+      setCheckingFirstLaunch(false);
+      setIsFirstLaunch(false);
+    }, 3000); // Reduced timeout to 3 seconds
+
+    checkFirstLaunch().finally(() => clearTimeout(timeoutId));
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Determine if auth screen should be shown based on user state
+  useEffect(() => {
+    // If no user is logged in and user has seen intro, prompt for login
+    if (!user && !isFirstLaunch && !initializing) {
+      setShowAuthScreen(true);
+    } else {
+      setShowAuthScreen(false);
+    }
+  }, [user, isFirstLaunch, initializing]);
+
+  // Sync user data when they log in
+  useEffect(() => {
+    if (user) {
+      performInitialSync().catch((error) => {
+        console.error("Failed to sync data:", error);
+      });
+    }
+  }, [user]);
+
+  // Run data migration
+  useEffect(() => {
+    migrateToEncryption().catch((error) => {
+      console.error("Failed to migrate data:", error);
+    });
+  }, []);
+
+  // Add safety timeout to prevent infinite loading
+  useEffect(() => {
+    const safetyTimeoutId = setTimeout(() => {
+      if (initializing || checkingFirstLaunch) {
+        console.warn("Safety timeout triggered. Forcing app to continue.");
+        if (initializing) {
+          console.warn("Auth was still initializing after timeout");
+        }
+        if (checkingFirstLaunch) {
+          console.warn("First launch check was still running after timeout");
+          setCheckingFirstLaunch(false);
+        }
+      }
+    }, 5000);
+
+    return () => clearTimeout(safetyTimeoutId);
+  }, [initializing, checkingFirstLaunch]);
+
+  if (initializing && checkingFirstLaunch) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.background,
+        }}
+      >
+        <Ionicons name="refresh" size={32} color={theme.accent} />
+      </View>
+    );
+  }
+
+  // For first-time users, show the welcome screen
+  if (isFirstLaunch && !user) {
+    return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen
+          name="(auth)"
+          initialParams={{ screen: "welcome" }}
+          options={{ gestureEnabled: false }}
+        />
+      </Stack>
+    );
+  }
+  
+  // For auth screens (login/signup), don't show the tab bar
+  if (showAuthScreen) {
+    return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" initialParams={{ screen: "login" }} />
+      </Stack>
+    );
+  }
+
+  // For all other screens, show the tab navigation
+  return <TabsNavigator />;
+}
+
 export default function AppLayout() {
   return (
-    <ThemeProvider>
-      <TabsNavigator />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <RootNavigation />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

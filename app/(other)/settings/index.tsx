@@ -1,13 +1,83 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Switch } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Switch,
+  Alert,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../../context/AuthContext";
 import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { performInitialSync } from "@/utils/firestoreSync";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { isDark, setDarkMode, theme } = useTheme();
+  const { logout, user } = useAuth();
+
+  const accountSettings = user
+    ? [
+        {
+          id: "account",
+          title: `Account: ${user.email}`,
+          icon: "person-outline",
+          onPress: () => {},
+        },
+        {
+          id: "sync",
+          title: "Sync Data Now",
+          icon: "cloud-upload-outline",
+          onPress: () => {
+            Alert.alert("Sync Data", "Sync all your data to the cloud?", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Sync",
+                onPress: async () => {
+                  try {
+                    await performInitialSync();
+                    Alert.alert("Success", "Data successfully synced to cloud");
+                  } catch (error) {
+                    Alert.alert("Error", "Failed to sync data");
+                  }
+                },
+              },
+            ]);
+          },
+        },
+        {
+          id: "logout",
+          title: "Logout",
+          type: "link",
+          icon: "log-out-outline",
+          onPress: () => {
+            Alert.alert("Log Out", "Are you sure you want to log out?", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Log Out",
+                onPress: async () => {
+                  try {
+                    await logout();
+                  } catch (error) {
+                    console.error("Logout failed", error);
+                  }
+                },
+              },
+            ]);
+          },
+        },
+      ]
+    : [
+        {
+          id: "login",
+          title: "Sign In",
+          icon: "log-in-outline",
+          onPress: () => router.push("/login"),
+        },
+      ];
 
   const settingsSections = [
     {
@@ -29,6 +99,7 @@ export default function SettingsScreen() {
         },
       ],
     },
+    { title: "Account", items: accountSettings },
   ];
 
   const renderItem = (item: any) => {

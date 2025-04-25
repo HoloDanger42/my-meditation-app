@@ -27,6 +27,7 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword) {
@@ -211,16 +212,16 @@ export default function SignupScreen() {
             style={styles.passwordInput}
             placeholder="Confirm Password"
             placeholderTextColor={theme.textTertiary}
-            secureTextEntry={!showPassword}
+            secureTextEntry={!showConfirmPassword}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
           <TouchableOpacity
             style={styles.visibilityToggle}
-            onPress={() => setShowPassword(!showPassword)}
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
           >
             <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
+              name={showConfirmPassword ? "eye-off" : "eye"}
               size={22}
               color={theme.textSecondary}
             />
