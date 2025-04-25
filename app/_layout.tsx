@@ -4,15 +4,18 @@ import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { migrateToEncryption } from "../utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { performInitialSync } from "../utils/firestoreSync";
-// Import and initialize Firebase at the app root level
+import * as SplashScreen from "expo-splash-screen";
 import initializeFirebase from "../utils/firebaseInit";
 
 // Initialize Firebase as early as possible
 initializeFirebase();
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 function TabsNavigator() {
   const { theme, isDark } = useTheme();
@@ -95,126 +98,98 @@ function TabsNavigator() {
   );
 }
 
+type InitialRoute = "welcome" | "login" | "tabs";
+
 function RootNavigation() {
   const { user, initializing } = useAuth();
   const { theme } = useTheme();
-  const [isFirstLaunch, setIsFirstLaunch] = useState(true);
-  const [checkingFirstLaunch, setCheckingFirstLaunch] = useState(true);
-  const [showAuthScreen, setShowAuthScreen] = useState(false);
-  
-  // Check if it's the first launch
+  const [appReady, setAppReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<InitialRoute | null>(null);
+
   useEffect(() => {
-    const checkFirstLaunch = async () => {
+    async function prepareApp() {
+      let isFirstLaunch = false;
       try {
+        await migrateToEncryption();
+
         const hasLaunched = await AsyncStorage.getItem("hasLaunched");
         if (hasLaunched === null) {
           await AsyncStorage.setItem("hasLaunched", "true");
-          setIsFirstLaunch(true);
+          isFirstLaunch = true;
         } else {
-          setIsFirstLaunch(false);
+          isFirstLaunch = false;
         }
-      } catch (error) {
-        console.error("Error checking first launch:", error);
-        setIsFirstLaunch(false);
+      } catch (e) {
+        console.warn("Error during app preparation:", e);
+        isFirstLaunch = false;
       } finally {
-        setCheckingFirstLaunch(false);
+        (window as any).__tempIsFirstLaunch = isFirstLaunch; // For debugging purposes
       }
-    };
+    }
 
-    const timeoutId = setTimeout(() => {
-      console.warn("First launch check timed out.");
-      setCheckingFirstLaunch(false);
-      setIsFirstLaunch(false);
-    }, 3000); // Reduced timeout to 3 seconds
-
-    checkFirstLaunch().finally(() => clearTimeout(timeoutId));
-
-    return () => clearTimeout(timeoutId);
+    prepareApp();
   }, []);
 
-  // Determine if auth screen should be shown based on user state
   useEffect(() => {
-    // If no user is logged in and user has seen intro, prompt for login
-    if (!user && !isFirstLaunch && !initializing) {
-      setShowAuthScreen(true);
-    } else {
-      setShowAuthScreen(false);
-    }
-  }, [user, isFirstLaunch, initializing]);
+    // Only proceed if auth is no longer initializing
+    if (!initializing) {
+      // Retrieve the first launch status determined in the prepareApp effect
+      const isFirstLaunch = (window as any).__tempIsFirstLaunch ?? false;
+      delete (window as any).__tempIsFirstLaunch; // Clean up temporary store
 
-  // Sync user data when they log in
+      let route: InitialRoute;
+      if (isFirstLaunch && !user) {
+        route = "welcome";
+      } else if (!user) {
+        route = "login";
+      } else {
+        route = "tabs";
+      }
+      setInitialRoute(route);
+      setAppReady(true); // Mark app as ready to hide splash screen
+    }
+  }, [initializing, user]);
+
+  // Effect to hide splash screen once app is ready
+  const onLayoutRootView = useCallback(async () => {
+    if (appReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [appReady]);
+
+  // Sync user data when they log in (or are already logged in)
   useEffect(() => {
-    if (user) {
+    if (user && appReady) {
       performInitialSync().catch((error) => {
         console.error("Failed to sync data:", error);
       });
     }
-  }, [user]);
+  }, [user, appReady]);
 
-  // Run data migration
-  useEffect(() => {
-    migrateToEncryption().catch((error) => {
-      console.error("Failed to migrate data:", error);
-    });
-  }, []);
-
-  // Add safety timeout to prevent infinite loading
-  useEffect(() => {
-    const safetyTimeoutId = setTimeout(() => {
-      if (initializing || checkingFirstLaunch) {
-        console.warn("Safety timeout triggered. Forcing app to continue.");
-        if (initializing) {
-          console.warn("Auth was still initializing after timeout");
-        }
-        if (checkingFirstLaunch) {
-          console.warn("First launch check was still running after timeout");
-          setCheckingFirstLaunch(false);
-        }
-      }
-    }, 5000);
-
-    return () => clearTimeout(safetyTimeoutId);
-  }, [initializing, checkingFirstLaunch]);
-
-  if (initializing && checkingFirstLaunch) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.background,
-        }}
-      >
-        <Ionicons name="refresh" size={32} color={theme.accent} />
-      </View>
-    );
+  // Render nothing until the layout callback runs and hides the splash screen
+  if (!appReady || !initialRoute) {
+    return null;
   }
 
-  // For first-time users, show the welcome screen
-  if (isFirstLaunch && !user) {
-    return (
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="(auth)"
-          initialParams={{ screen: "welcome" }}
-          options={{ gestureEnabled: false }}
-        />
-      </Stack>
-    );
-  }
-  
-  // For auth screens (login/signup), don't show the tab bar
-  if (showAuthScreen) {
-    return (
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" initialParams={{ screen: "login" }} />
-      </Stack>
-    );
-  }
-
-  // For all other screens, show the tab navigation
-  return <TabsNavigator />;
+  return (
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      {initialRoute === "welcome" && (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name="(auth)"
+            initialParams={{ screen: "welcome" }}
+            options={{ gestureEnabled: false }}
+          />
+        </Stack>
+      )}
+      {initialRoute === "login" && (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" initialParams={{ screen: "login" }} />
+        </Stack>
+      )}
+      {initialRoute === "tabs" && <TabsNavigator />}
+    </View>
+  );
 }
 
 export default function AppLayout() {

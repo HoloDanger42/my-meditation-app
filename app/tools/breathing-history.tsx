@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   FlatList,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
@@ -23,11 +23,7 @@ export default function BreathingHistoryScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
 
-  useEffect(() => {
-    loadBreathingData();
-  }, []);
-
-  const loadBreathingData = async () => {
+  const loadBreathingData = useCallback(async () => {
     try {
       // Load breathing sessions
       const breathingSessions =
@@ -57,7 +53,15 @@ export default function BreathingHistoryScreen() {
     } catch (error) {
       console.error("Failed to load breathing data:", error);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBreathingData();
+
+      return () => {};
+    }, [loadBreathingData])
+  );
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
