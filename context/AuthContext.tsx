@@ -1,9 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
-import initializeFirebase from "../utils/firebaseInit";
-
-// Initialize Firebase when this module is imported
-initializeFirebase();
 
 interface AuthContextType {
   user: FirebaseAuthTypes.User | null;
@@ -30,11 +26,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     try {
-      // Make sure Firebase is initialized before setting up auth
-      initializeFirebase();
-      
       const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-      
+
       // Safety timeout to ensure initializing is set to false
       const timeoutId = setTimeout(() => {
         if (initializing) {
@@ -42,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           setInitializing(false);
         }
       }, 3000);
-      
+
       return () => {
         subscriber(); // unsubscribe on unmount
         clearTimeout(timeoutId);
@@ -56,8 +49,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (email: string, pass: string) => {
     try {
-      // Ensure Firebase is initialized
-      initializeFirebase();
       await auth().signInWithEmailAndPassword(email, pass);
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -67,8 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signup = async (email: string, pass: string) => {
     try {
-      // Ensure Firebase is initialized
-      initializeFirebase();
       await auth().createUserWithEmailAndPassword(email, pass);
     } catch (error: any) {
       console.error("Signup failed:", error);
@@ -78,8 +67,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     try {
-      // Ensure Firebase is initialized
-      initializeFirebase();
       await auth().signOut();
     } catch (error) {
       console.error("Logout failed:", error);
