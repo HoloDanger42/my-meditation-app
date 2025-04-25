@@ -23,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { meditationsData } from "../../data/meditationsData";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
+import { MeditationSession } from "../../types/dataTypes";
 
 const BACKGROUNDS = [
   require("../../assets/images/meditation-bg-1.jpg"),
@@ -350,7 +351,7 @@ export default function MeditationPlayerScreen() {
   async function saveSession(duration: number, rating?: number) {
     const session = {
       id: Date.now(),
-      meditationId: id,
+      meditationId: String(id),
       duration,
       rating: rating || 0,
       timestamp: new Date().toISOString(),
@@ -358,11 +359,12 @@ export default function MeditationPlayerScreen() {
 
     try {
       const sessions =
-        (await getSecureItem<any[]>("meditation_sessions")) || [];
+        (await getSecureItem<MeditationSession[]>("meditation_sessions")) || [];
 
       // Check if sessions is an array before using array methods
       if (!Array.isArray(sessions)) {
-        // If it's not an array, initialize as empty array
+        console.warn("'meditation_sessions' was not an array, initializing.");
+        // If it's not an array, initialize as empty array with the new session
         await setSecureItem("meditation_sessions", [session]);
       } else {
         // Add the new session and save

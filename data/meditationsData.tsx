@@ -1,11 +1,4 @@
-export interface Meditation {
-  id: string;
-  title: string;
-  description: string;
-  audio: any; // Could be a require statement or URL
-  duration: number;
-  category: string[];
-}
+import { Meditation } from "../types/dataTypes";
 
 // Combined meditation data with categories for recommendations
 export const meditationsData: { [key: string]: Meditation } = {

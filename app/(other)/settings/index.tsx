@@ -13,13 +13,24 @@ import { useAuth } from "../../../context/AuthContext";
 import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { performInitialSync } from "@/utils/firestoreSync";
+import { IoniconsName } from "@/types/dataTypes";
+
+interface SettingItem {
+  id: string;
+  title: string;
+  icon?: IoniconsName;
+  type?: "link" | "switch";
+  onPress?: () => void;
+  value?: boolean;
+  onValueChange?: (value: boolean) => void;
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { isDark, setDarkMode, theme } = useTheme();
   const { logout, user } = useAuth();
 
-  const accountSettings = user
+  const accountSettings: SettingItem[] = user
     ? [
         {
           id: "account",
@@ -96,17 +107,26 @@ export default function SettingsScreen() {
           type: "switch",
           value: isDark,
           onValueChange: setDarkMode,
+          icon: "contrast-outline",
         },
       ],
     },
     { title: "Account", items: accountSettings },
   ];
 
-  const renderItem = (item: any) => {
+  const renderItem = (item: SettingItem) => {
     if (item.type === "switch") {
       return (
         <View key={item.id} style={[styles.settingItem, { height: 54 }]}>
-          <Text style={[styles.settingText, { color: theme.text }]}>
+          {item.icon && (
+            <Ionicons name={item.icon} size={22} color={theme.accent} />
+          )}
+          <Text
+            style={[
+              styles.settingText,
+              { marginLeft: item.icon ? 10 : 0, color: theme.text },
+            ]}
+          >
             {item.title}
           </Text>
           <Switch
@@ -123,6 +143,7 @@ export default function SettingsScreen() {
           key={item.id}
           style={[styles.settingItem, { height: 54 }]}
           onPress={item.onPress}
+          disabled={!item.onPress}
         >
           <Ionicons name={item.icon} size={22} color={theme.accent} />
           <Text
@@ -130,12 +151,14 @@ export default function SettingsScreen() {
           >
             {item.title}
           </Text>
-          <Ionicons
-            style={styles.chevron}
-            name="chevron-forward"
-            size={20}
-            color={theme.textTertiary}
-          />
+          {item.onPress && (
+            <Ionicons
+              style={styles.chevron}
+              name="chevron-forward"
+              size={20}
+              color={theme.textTertiary}
+            />
+          )}
         </TouchableOpacity>
       );
     }
@@ -216,7 +239,7 @@ export default function SettingsScreen() {
         <View key={section.title} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
           <View style={styles.sectionContent}>
-            {section.items.map(renderItem)}
+            {section.items.map((item) => renderItem(item as SettingItem))}
           </View>
         </View>
       ))}

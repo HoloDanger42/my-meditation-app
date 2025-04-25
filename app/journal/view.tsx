@@ -11,23 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem } from "../../utils/secureStorage";
-
-interface JournalEntry {
-  id: number;
-  title: string;
-  content: string;
-  mood: any | null;
-  timestamp: string;
-  relatedSessionId?: number | null;
-}
-
-interface MeditationSession {
-  id: number;
-  meditationId: string;
-  duration: number;
-  rating?: number;
-  timestamp: string;
-}
+import { JournalEntry, MeditationSession } from "../../types/dataTypes";
 
 export default function JournalViewScreen() {
   const { id } = useLocalSearchParams();
@@ -238,17 +222,17 @@ export default function JournalViewScreen() {
             <View
               style={[
                 styles.moodIcon,
-                { backgroundColor: entry.mood.mood.color + "30" },
+                { backgroundColor: entry.mood.color + "30" },
               ]}
             >
               <Ionicons
-                name={entry.mood.mood.icon}
+                name={entry.mood.icon}
                 size={20}
-                color={entry.mood.mood.color}
+                color={entry.mood.color}
               />
             </View>
             <Text style={styles.moodText}>
-              Feeling {entry.mood.mood.name} ({entry.mood.intensity}/5)
+              Feeling {entry.mood.name} ({entry.moodIntensity}/5)
             </Text>
           </View>
         )}

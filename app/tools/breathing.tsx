@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
+import { BreathingSession, BreathingTechnique } from "../../types/dataTypes";
 
 const BREATHING_TECHNIQUES = [
   {
@@ -57,28 +58,6 @@ const BREATHING_TECHNIQUES = [
     color: "#EA4335",
   },
 ];
-
-// Track breathing sessions
-interface BreathingSession {
-  id: number;
-  techniqueId: string;
-  techniqueName: string;
-  duration: number; // in seconds
-  cycles: number;
-  timestamp: string;
-}
-
-interface BreathingTechnique {
-  id: string;
-  name: string;
-  description: string;
-  inhale: number;
-  hold: number;
-  exhale: number;
-  color: string;
-  holdAfterExhale?: number;
-  cycles?: number;
-}
 
 export default function BreathingExerciseScreen() {
   const [phase, setPhase] = useState("inhale");

@@ -12,16 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem } from "../../utils/secureStorage";
-
-// Types
-interface BreathingSession {
-  id: number;
-  techniqueId: string;
-  techniqueName: string;
-  duration: number;
-  cycles: number;
-  timestamp: string;
-}
+import { BreathingSession } from "../../types/dataTypes";
 
 export default function BreathingHistoryScreen() {
   const [sessions, setSessions] = useState<BreathingSession[]>([]);

@@ -14,7 +14,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
-import { MoodEntry, MeditationSession } from "../../types/dataTypes";
+import {
+  MoodEntry,
+  MeditationSession,
+  JournalEntry,
+} from "../../types/dataTypes";
 
 export default function NewJournalEntryScreen() {
   const [title, setTitle] = useState("");
@@ -85,20 +89,26 @@ export default function NewJournalEntryScreen() {
       setIsSaving(true);
 
       // Get existing entries
-      const entries = (await getSecureItem<any[]>("journal_entries")) || [];
+      const entries =
+        (await getSecureItem<JournalEntry[]>("journal_entries")) || [];
 
       // Create new entry
-      const newEntry = {
+      const newEntry: JournalEntry = {
         id: Date.now(),
         title,
         content,
-        mood: latestMood,
+        mood: latestMood?.mood || null,
+        moodIntensity: latestMood?.intensity ?? null,
         timestamp: new Date().toISOString(),
         relatedSessionId: relatedSessionId,
       };
 
+      const updatedEntries = Array.isArray(entries)
+        ? [newEntry, ...entries]
+        : [newEntry];
+
       // Save updated entries
-      await setSecureItem("journal_entries", [newEntry, ...entries]);
+      await setSecureItem("journal_entries", updatedEntries);
 
       Alert.alert("Success", "Your journal entry has been saved!", [
         { text: "OK", onPress: () => router.replace("/journal") },

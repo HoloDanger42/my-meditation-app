@@ -12,14 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
-
-interface JournalEntry {
-  id: number;
-  title: string;
-  content: string;
-  mood: any | null;
-  timestamp: string;
-}
+import { JournalEntry } from "@/types/dataTypes";
 
 export default function JournalScreen() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -108,17 +101,13 @@ export default function JournalScreen() {
           <View
             style={[
               styles.moodIcon,
-              { backgroundColor: item.mood.mood.color + "30" },
+              { backgroundColor: item.mood.color + "30" },
             ]}
           >
-            <Ionicons
-              name={item.mood.mood.icon}
-              size={16}
-              color={item.mood.mood.color}
-            />
+            <Ionicons name={item.mood.icon} size={16} color={item.mood.color} />
           </View>
           <Text style={[styles.moodText, { color: theme.textSecondary }]}>
-            {item.mood.mood.name}
+            {item.mood.name} {item.moodIntensity ? `(${item.moodIntensity}/5)` : ''}
           </Text>
         </View>
       )}

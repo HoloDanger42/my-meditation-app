@@ -47,7 +47,6 @@
     "expo-system-ui": "~4.0.8",
     "expo-web-browser": "~14.0.2",
     "lodash": "^4.17.21",
-    "my-meditation-app": "file:",
     "react": "^18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.9",

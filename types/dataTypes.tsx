@@ -30,7 +30,7 @@ export interface Meditation {
   id: string;
   title: string;
   description: string;
-  audio: any; // Consider defining a more specific type if possible
+  audio: number | { uri: string } | null | undefined;
   duration: number;
   category: string[];
   imageUrl?: string; // Optional image URL
@@ -41,9 +41,31 @@ export interface JournalEntry {
   id: number;
   title: string;
   content: string;
-  mood: MoodEntry["mood"] | null; // Use the mood part of MoodEntry
+  mood: MoodEntry["mood"] | null;
+  moodIntensity?: number | null;
   timestamp: string;
   relatedSessionId?: number | null;
+}
+
+export interface BreathingSession {
+  id: number;
+  techniqueId: string;
+  techniqueName: string;
+  duration: number; // in seconds
+  cycles: number;
+  timestamp: string;
+}
+
+export interface BreathingTechnique {
+  id: string;
+  name: string;
+  description: string;
+  inhale: number;
+  hold: number;
+  exhale: number;
+  color: string;
+  holdAfterExhale?: number;
+  cycles?: number;
 }
 
 export interface Recommendations {

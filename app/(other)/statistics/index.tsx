@@ -14,46 +14,21 @@ import { useTheme } from "../../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { LineChart, BarChart } from "react-native-gifted-charts";
 import { getSecureItem } from "../../../utils/secureStorage";
-
-interface MoodEntry {
-  id: number;
-  mood: {
-    id: number;
-    name: string;
-    icon: string;
-    color: string;
-  };
-  intensity: number;
-  notes: string;
-  timestamp: string;
-}
-
-interface MeditationSession {
-  id: number;
-  meditationId: string;
-  duration: number;
-  rating?: number;
-  timestamp: string;
-}
+import {
+  MoodEntry,
+  JournalEntry,
+  MeditationSession,
+} from "../../../types/dataTypes";
 
 export default function StatisticsScreen() {
   const [moodData, setMoodData] = useState<MoodEntry[]>([]);
-  const [journalData, setJournalData] = useState<
-    {
-      id: number;
-      title: string;
-      content: string;
-      mood: any | null;
-      timestamp: string;
-      relatedSessionId?: number | null;
-    }[]
+  const [journalData, setJournalData] = useState<JournalEntry[]>([]);
+  const [meditationSessions, setMeditationSessions] = useState<
+    MeditationSession[]
   >([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { theme, isDark } = useTheme();
-  const [meditationSessions, setMeditationSessions] = useState<
-    MeditationSession[]
-  >([]);
   const [averageRating, setAverageRating] = useState(0);
 
   // Wrap loadData in useCallback
@@ -65,7 +40,9 @@ export default function StatisticsScreen() {
       setMoodData(moodEntries || []);
 
       // Load journal entries
-      const journalEntries = await getSecureItem<any[]>("journal_entries");
+      const journalEntries = await getSecureItem<JournalEntry[]>(
+        "journal_entries"
+      );
       setJournalData(journalEntries || []);
 
       // Load meditation sessions
@@ -680,7 +657,7 @@ function getAverageMoodIntensity(moodData: MoodEntry[]) {
   return (sum / moodData.length).toFixed(1);
 }
 
-function getJournalEntriesThisWeek(journalData: any[]) {
+function getJournalEntriesThisWeek(journalData: JournalEntry[]) {
   if (journalData.length === 0) return 0;
 
   const oneWeekAgo = new Date();
