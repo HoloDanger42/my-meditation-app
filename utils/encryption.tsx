@@ -22,8 +22,8 @@ const isExpoGo = Constants.appOwnership === "expo";
 export async function generateSalt(): Promise<string> {
   const randomBytes = await Crypto.getRandomBytesAsync(16);
   return Array.from(randomBytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -33,8 +33,8 @@ export async function generateEncryptionKey(): Promise<string> {
   // Generate 256-bit (32 bytes) random key
   const randomBytes = await Crypto.getRandomBytesAsync(32);
   return Array.from(randomBytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -44,8 +44,8 @@ export async function generateIV(): Promise<string> {
   // 16 bytes for AES
   const randomBytes = await Crypto.getRandomBytesAsync(16);
   return Array.from(randomBytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -155,7 +155,7 @@ export async function encryptData(data: any): Promise<string> {
       if (isExpoGo) {
         return simpleEncrypt(jsonString, keyHex);
       }
-      
+
       // Platform-specific encryption for other environments
       if (Platform.OS === "web") {
         return await encryptWeb(jsonString, keyHex, ivHex, salt);
@@ -165,19 +165,18 @@ export async function encryptData(data: any): Promise<string> {
     } catch (specificError) {
       // If platform-specific encryption fails, try fallback
       if (!isExpoGo) {
-        console.warn("Platform-specific encryption failed, using fallback", specificError);
+        console.warn(
+          "Platform-specific encryption failed, using fallback",
+          specificError
+        );
       }
       return await encryptWeb(jsonString, keyHex, ivHex, salt);
     }
   } catch (error) {
     console.error("Encryption error:", error);
-    
-    // If all encryption attempts fail, return a plaintext representation as a last resort
-    if (typeof data === "string") {
-      return `plain:${data}`;
-    } else {
-      return `plain:${JSON.stringify(data)}`;
-    }
+    throw new Error(
+      "Failed to encrypt data. Data protection cannot be guaranteed."
+    );
   }
 }
 
@@ -187,7 +186,7 @@ export async function encryptData(data: any): Promise<string> {
 export async function decryptData(encryptedData: string): Promise<any> {
   try {
     // Check if this is a plaintext fallback from a failed encryption
-    if (encryptedData.startsWith('plain:')) {
+    if (encryptedData.startsWith("plain:")) {
       const plainData = encryptedData.substring(6); // Remove 'plain:' prefix
       try {
         return JSON.parse(plainData);
@@ -195,13 +194,13 @@ export async function decryptData(encryptedData: string): Promise<any> {
         return plainData;
       }
     }
-    
+
     // Check if this is a simple encryption (which is likely in Expo Go)
-    if (encryptedData.startsWith('simple:')) {
+    if (encryptedData.startsWith("simple:")) {
       const keyHex = await getEncryptionKey();
       return simpleDecrypt(encryptedData, keyHex);
     }
-    
+
     // Get encryption materials
     const keyHex = await getEncryptionKey();
     const ivHex = await getIV();
@@ -218,12 +217,20 @@ export async function decryptData(encryptedData: string): Promise<any> {
       if (Platform.OS === "web") {
         decryptedString = await decryptWeb(encryptedData, keyHex, ivHex, salt);
       } else {
-        decryptedString = await decryptNative(encryptedData, keyHex, ivHex, salt);
+        decryptedString = await decryptNative(
+          encryptedData,
+          keyHex,
+          ivHex,
+          salt
+        );
       }
     } catch (specificError) {
       // If platform-specific decryption fails, try web fallback
       if (!isExpoGo) {
-        console.warn("Platform-specific decryption failed, using fallback", specificError);
+        console.warn(
+          "Platform-specific decryption failed, using fallback",
+          specificError
+        );
       }
       decryptedString = await decryptWeb(encryptedData, keyHex, ivHex, salt);
     }
@@ -236,7 +243,7 @@ export async function decryptData(encryptedData: string): Promise<any> {
     }
   } catch (error) {
     console.error("Decryption error:", error);
-    
+
     // Return the raw encrypted data as a last resort
     return encryptedData;
   }
@@ -254,7 +261,9 @@ async function encryptNative(
   // Check if AesCrypto is available
   if (!AesCrypto) {
     if (!isExpoGo) {
-      console.warn("AesCrypto not available, falling back to web implementation");
+      console.warn(
+        "AesCrypto not available, falling back to web implementation"
+      );
     }
     return encryptWeb(text, keyHex, ivHex, salt);
   }
@@ -270,17 +279,15 @@ async function encryptNative(
     );
 
     // Encrypt using AES-CBC
-    const encrypted = await AesCrypto.encrypt(
-      text,
-      key,
-      ivHex,
-      "aes-256-cbc"
-    );
+    const encrypted = await AesCrypto.encrypt(text, key, ivHex, "aes-256-cbc");
 
     return encrypted;
   } catch (error) {
     if (!isExpoGo) {
-      console.warn("Native encryption failed, falling back to web implementation", error);
+      console.warn(
+        "Native encryption failed, falling back to web implementation",
+        error
+      );
     }
     return encryptWeb(text, keyHex, ivHex, salt);
   }
@@ -319,7 +326,10 @@ async function decryptNative(
       "aes-256-cbc" // AES-CBC mode
     );
   } catch (error) {
-    console.warn("Native decryption failed, falling back to web implementation", error);
+    console.warn(
+      "Native decryption failed, falling back to web implementation",
+      error
+    );
     return decryptWeb(encryptedBase64, keyHex, ivHex, salt);
   }
 }
@@ -334,7 +344,11 @@ async function encryptWeb(
   salt: string
 ): Promise<string> {
   // Check if Web Crypto API is available
-  if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+  if (
+    typeof window === "undefined" ||
+    !window.crypto ||
+    !window.crypto.subtle
+  ) {
     if (!isExpoGo) {
       console.warn("Web Crypto API not available, using simple encryption");
     }
@@ -382,7 +396,10 @@ async function encryptWeb(
     return encodeBase64(String.fromCharCode(...encryptedArray));
   } catch (error) {
     if (!isExpoGo) {
-      console.warn("Web Crypto API encryption failed, using simple encryption", error);
+      console.warn(
+        "Web Crypto API encryption failed, using simple encryption",
+        error
+      );
     }
     return simpleEncrypt(text, keyHex);
   }
@@ -398,12 +415,16 @@ async function decryptWeb(
   salt: string
 ): Promise<string> {
   // Check if this is a simple encryption
-  if (encryptedBase64.startsWith('simple:')) {
+  if (encryptedBase64.startsWith("simple:")) {
     return simpleDecrypt(encryptedBase64, keyHex);
   }
 
   // Check if Web Crypto API is available
-  if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+  if (
+    typeof window === "undefined" ||
+    !window.crypto ||
+    !window.crypto.subtle
+  ) {
     if (!isExpoGo) {
       console.warn("Web Crypto API not available for decryption");
     }
@@ -483,16 +504,19 @@ function hexToUint8Array(hexString: string): Uint8Array {
 function simpleEncrypt(text: string, key: string): Promise<string> {
   try {
     // Create a simple key from the hex key
-    const simpleKey = key.split('').map(c => c.charCodeAt(0));
+    const simpleKey = key.split("").map((c) => c.charCodeAt(0));
     const keyLength = simpleKey.length;
-    
+
     // XOR each character with the key
-    const result = text.split('').map((char, index) => {
-      const charCode = char.charCodeAt(0);
-      const keyChar = simpleKey[index % keyLength];
-      return String.fromCharCode(charCode ^ keyChar);
-    }).join('');
-    
+    const result = text
+      .split("")
+      .map((char, index) => {
+        const charCode = char.charCodeAt(0);
+        const keyChar = simpleKey[index % keyLength];
+        return String.fromCharCode(charCode ^ keyChar);
+      })
+      .join("");
+
     // Return as base64 to ensure it's transportable
     return Promise.resolve(`simple:${encodeBase64(result)}`);
   } catch (e) {
@@ -507,24 +531,27 @@ function simpleEncrypt(text: string, key: string): Promise<string> {
 function simpleDecrypt(encryptedText: string, key: string): Promise<string> {
   try {
     // If it starts with our marker, remove it
-    if (encryptedText.startsWith('simple:')) {
+    if (encryptedText.startsWith("simple:")) {
       encryptedText = encryptedText.substring(7);
     }
-    
+
     // Decode from base64
     const decoded = decodeBase64(encryptedText);
-    
+
     // Create a simple key from the hex key
-    const simpleKey = key.split('').map(c => c.charCodeAt(0));
+    const simpleKey = key.split("").map((c) => c.charCodeAt(0));
     const keyLength = simpleKey.length;
-    
+
     // XOR each character with the key (XOR is reversible)
-    const result = decoded.split('').map((char, index) => {
-      const charCode = char.charCodeAt(0);
-      const keyChar = simpleKey[index % keyLength];
-      return String.fromCharCode(charCode ^ keyChar);
-    }).join('');
-    
+    const result = decoded
+      .split("")
+      .map((char, index) => {
+        const charCode = char.charCodeAt(0);
+        const keyChar = simpleKey[index % keyLength];
+        return String.fromCharCode(charCode ^ keyChar);
+      })
+      .join("");
+
     return Promise.resolve(result);
   } catch (e) {
     console.error("Simple decryption failed:", e);

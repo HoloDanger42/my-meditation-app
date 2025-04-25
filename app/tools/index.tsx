@@ -10,12 +10,20 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { IoniconsName } from "../../types/dataTypes";
+
+interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  icon: IoniconsName;
+}
 
 export default function ToolsScreen() {
   const router = useRouter();
   const { theme, isDark } = useTheme();
 
-  const tools = [
+  const tools: Tool[] = [
     {
       id: "breathing",
       name: "Deep Breathing Exercise",
@@ -111,11 +119,7 @@ export default function ToolsScreen() {
             onPress={() => router.push(`/tools/${tool.id}`)}
           >
             <View style={styles.toolIcon}>
-              <Ionicons
-                name={tool.icon as any}
-                size={24}
-                color={theme.accent}
-              />
+              <Ionicons name={tool.icon} size={24} color={theme.accent} />
             </View>
             <View style={styles.toolTextContainer}>
               <Text style={styles.toolName}>{tool.name}</Text>

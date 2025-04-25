@@ -132,9 +132,10 @@ export default function MeditationPlayerScreen() {
       if (status.isLoaded) {
         await soundToCleanup.stopAsync();
         await soundToCleanup.unloadAsync();
+        console.log("Audio cleaned up successfully.");
       }
     } catch (error) {
-      // Silent failure
+      console.error("Error during audio cleanup:", error);
     }
   };
 
@@ -375,54 +376,55 @@ export default function MeditationPlayerScreen() {
   }
 
   async function handleEndSession() {
-    if (sound) {
+    const currentSound = sound;
+    if (currentSound) {
       try {
         stopTimer();
         setIsPlaying(false);
-
-        await cleanupAudio(sound);
+        await cleanupAudio(currentSound);
         setSound(null);
       } catch (error) {
+        console.error("Error cleaning up audio in handleEndSession:", error);
         setSound(null);
       }
     }
     setShowRatingPanel(true);
   }
 
-  function handleRating(rating: number) {
+  async function handleRating(rating: number) {
     saveSession(timeElapsed, rating);
     setIsPlaying(false);
     setTimeElapsed(0);
     setShowRatingPanel(false);
 
-    if (sound) {
-      (async () => {
-        try {
-          await cleanupAudio(sound);
-          setSound(null);
-        } catch (error) {
-          setSound(null);
-        }
-      })();
+    const currentSound = sound;
+    if (currentSound) {
+      try {
+        await cleanupAudio(currentSound);
+        setSound(null);
+      } catch (error) {
+        console.error("Error cleaning up audio in handleRating:", error);
+        setSound(null);
+      }
     }
     router.back();
   }
 
-  function skipRating() {
+  async function skipRating() {
     saveSession(timeElapsed);
     setIsPlaying(false);
     setTimeElapsed(0);
     setShowRatingPanel(false);
 
-    if (sound) {
-      (async () => {
-        try {
-          await cleanupAudio(sound);
-          setSound(null);
-        } catch (error) {
-          setSound(null);
-        }
-      })();
+    const currentSound = sound;
+    if (currentSound) {
+      try {
+        await cleanupAudio(currentSound);
+        setSound(null);
+      } catch (error) {
+        console.error("Error cleaning up audio in skipRating:", error);
+        setSound(null);
+      }
     }
     router.back();
   }
@@ -534,11 +536,19 @@ export default function MeditationPlayerScreen() {
           <TouchableOpacity
             style={styles.iconButton}
             onPress={async () => {
-              if (sound) {
-                const soundToCleanup = sound;
+              const currentSound = sound;
+              if (currentSound) {
                 setIsPlaying(false);
-                setSound(null);
-                await cleanupAudio(soundToCleanup);
+                try {
+                  await cleanupAudio(currentSound);
+                  setSound(null);
+                } catch (error) {
+                  console.error(
+                    "Error cleaning up audio on back press:",
+                    error
+                  );
+                  setSound(null);
+                }
               }
               router.back();
             }}

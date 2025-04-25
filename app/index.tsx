@@ -19,45 +19,7 @@ import {
 } from "../utils/stats";
 import { generatePersonalizedRecommendations } from "../utils/recommendations";
 import { trackRecommendationEngagement } from "../utils/analytics";
-
-interface MoodEntry {
-  id: number;
-  mood: {
-    id: number;
-    name: string;
-    icon: string;
-    color: string;
-  };
-  intensity: number;
-  notes: string;
-  timestamp: string;
-}
-
-interface Meditation {
-  id: string;
-  title: string;
-  description?: string;
-  duration?: number;
-  imageUrl?: string;
-}
-
-interface Recommendations {
-  recommendedMeditations: Meditation[];
-  moodInsights: string;
-  journalPrompts: string[];
-}
-
-interface StylesProps {
-  recommendationsCard: any;
-  recommendationsTitle: any;
-  insightContainer: any;
-  insightText: any;
-  recommendationsSection: any;
-  recommendationsSectionTitle: any;
-  recommendedItem: any;
-  recommendedItemText: any;
-  [key: string]: any;
-}
+import { MoodEntry, Recommendations, Meditation } from "../types/dataTypes";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -123,7 +85,8 @@ export default function HomeScreen() {
           ]}
         >
           <Ionicons
-            name={latestMood.mood.icon as any}
+            // name={latestMood.mood.icon as any}
+            name={latestMood.mood.icon}
             size={20}
             color={latestMood.mood.color}
           />
@@ -375,6 +338,162 @@ export default function HomeScreen() {
     },
   });
 
+  // --- Define nested components START ---
+  function PersonalizedRecommendations() {
+    const [recommendations, setRecommendations] =
+      useState<Recommendations | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const { theme } = useTheme();
+    const router = useRouter();
+
+    useEffect(() => {
+      async function loadRecommendations() {
+        try {
+          setIsLoading(true);
+          const recs = await Promise.race([
+            generatePersonalizedRecommendations(),
+            new Promise<null>(
+              (resolve) => setTimeout(() => resolve(null), 5000) // 5 second timeout
+            ),
+          ]);
+
+          if (recs) {
+            setRecommendations(recs);
+          } else {
+            setError(true);
+          }
+        } catch (err) {
+          console.error("Failed to load recommendations:", err);
+          setError(true);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+
+      loadRecommendations();
+    }, []);
+
+    if (isLoading) {
+      return <ActivityIndicator color={theme.accent} size="small" />;
+    }
+
+    if (error || !recommendations) {
+      return (
+        <View style={styles.recommendationsCard}>
+          <Text style={styles.recommendationsTitle}>Personalized For You</Text>
+          <Text style={styles.insightText}>
+            Unable to load recommendations right now. Check back later.
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.recommendationsCard}>
+        <Text style={styles.recommendationsTitle}>Personalized For You</Text>
+
+        {recommendations.moodInsights && (
+          <View style={styles.insightContainer}>
+            <Text style={styles.insightText}>
+              {recommendations.moodInsights}
+            </Text>
+          </View>
+        )}
+
+        {recommendations.recommendedMeditations?.length > 0 && (
+          <View style={styles.recommendationsSection}>
+            <Text style={styles.recommendationsSectionTitle}>
+              Recommended Meditations
+            </Text>
+            {/* Use the correct Meditation type */}
+            {recommendations.recommendedMeditations.map(
+              (meditation: Meditation) => (
+                <TouchableOpacity
+                  key={meditation.id} // Use string id from Meditation type
+                  style={styles.recommendedItem}
+                  onPress={() => {
+                    // meditation.id is now string, correct for the function
+                    trackRecommendationEngagement(meditation.id, "clicked");
+                    // Navigate using the meditation content id
+                    router.push(`/meditations/${meditation.id}`);
+                  }}
+                  onLayout={() => {
+                    // meditation.id is now string, correct for the function
+                    trackRecommendationEngagement(meditation.id, "viewed");
+                  }}
+                >
+                  <Ionicons
+                    name="leaf-outline"
+                    size={24}
+                    color={theme.accent}
+                  />
+                  {/* Display title from Meditation type */}
+                  <Text style={styles.recommendedItemText}>
+                    {meditation.title}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  const BreathingStats = () => {
+    const [totalTime, setTotalTime] = useState(0);
+    const [sessions, setSessions] = useState(0);
+    const { theme } = useTheme();
+    const router = useRouter();
+
+    useEffect(() => {
+      const loadStats = async () => {
+        try {
+          const time =
+            (await getSecureItem<number>("total_breathing_time")) || 0;
+          const breathingSessions =
+            (await getSecureItem<any[]>("breathing_sessions")) || [];
+
+          setTotalTime(time);
+          setSessions(breathingSessions.length);
+        } catch (error) {
+          console.error("Failed to load breathing stats:", error);
+        }
+      };
+
+      loadStats();
+    }, []);
+
+    const formatTime = (seconds: number) => {
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m`;
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.breathingStatsCard}
+        onPress={() => router.push("/tools/breathing-history")}
+      >
+        <Text style={styles.recommendationsTitle}>Breathing Practice</Text>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{formatTime(totalTime)}</Text>
+            <Text style={styles.statLabel}>Total Time</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{sessions}</Text>
+            <Text style={styles.statLabel}>Sessions</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+  // --- Define nested components END ---
+
   return (
     <View style={styles.container}>
       <StatusBar style={isDark ? "light" : "dark"} />
@@ -510,154 +629,11 @@ export default function HomeScreen() {
         </View>
 
         {/* Personalized Recommendations */}
-        <PersonalizedRecommendations styles={styles} />
+        <PersonalizedRecommendations />
 
         {/* Breathing Stats */}
-        <BreathingStats styles={styles} />
+        <BreathingStats />
       </ScrollView>
     </View>
   );
 }
-
-function PersonalizedRecommendations({ styles }: { styles: StylesProps }) {
-  const [recommendations, setRecommendations] =
-    useState<Recommendations | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const { theme } = useTheme();
-  const router = useRouter();
-
-  useEffect(() => {
-    async function loadRecommendations() {
-      try {
-        setIsLoading(true);
-        const recs = await Promise.race([
-          generatePersonalizedRecommendations(),
-          new Promise<null>(
-            (resolve) => setTimeout(() => resolve(null), 5000) // 5 second timeout
-          ),
-        ]);
-
-        if (recs) {
-          setRecommendations(recs);
-        } else {
-          setError(true);
-        }
-      } catch (err) {
-        console.error("Failed to load recommendations:", err);
-        setError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadRecommendations();
-  }, []);
-
-  if (isLoading) {
-    return <ActivityIndicator color={theme.accent} size="small" />;
-  }
-
-  if (error || !recommendations) {
-    return (
-      <View style={styles.recommendationsCard}>
-        <Text style={styles.recommendationsTitle}>Personalized For You</Text>
-        <Text style={styles.insightText}>
-          Unable to load recommendations right now. Check back later.
-        </Text>
-      </View>
-    );
-  }
-
-  if (!recommendations) {
-    return <ActivityIndicator color={theme.accent} size="small" />;
-  }
-
-  return (
-    <View style={styles.recommendationsCard}>
-      <Text style={styles.recommendationsTitle}>Personalized For You</Text>
-
-      {recommendations.moodInsights && (
-        <View style={styles.insightContainer}>
-          <Text style={styles.insightText}>{recommendations.moodInsights}</Text>
-        </View>
-      )}
-
-      {recommendations.recommendedMeditations?.length > 0 && (
-        <View style={styles.recommendationsSection}>
-          <Text style={styles.recommendationsSectionTitle}>
-            Recommended Meditations
-          </Text>
-          {recommendations.recommendedMeditations.map((meditation) => (
-            <TouchableOpacity
-              key={meditation.id}
-              style={styles.recommendedItem}
-              onPress={() => {
-                // Track that user clicked this recommendation
-                trackRecommendationEngagement(meditation.id, "clicked");
-                router.push(`/meditations/${meditation.id}`);
-              }}
-              onLayout={() => {
-                trackRecommendationEngagement(meditation.id, "viewed");
-              }}
-            >
-              <Ionicons name="leaf-outline" size={24} color={theme.accent} />
-              <Text style={styles.recommendedItemText}>{meditation.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
-const BreathingStats = ({ styles }: { styles: StylesProps }) => {
-  const [totalTime, setTotalTime] = useState(0);
-  const [sessions, setSessions] = useState(0);
-  const { theme } = useTheme();
-  const router = useRouter();
-
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const time = (await getSecureItem<number>("total_breathing_time")) || 0;
-        const breathingSessions =
-          (await getSecureItem<any[]>("breathing_sessions")) || [];
-
-        setTotalTime(time);
-        setSessions(breathingSessions.length);
-      } catch (error) {
-        console.error("Failed to load breathing stats:", error);
-      }
-    };
-
-    loadStats();
-  }, []);
-
-  const formatTime = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}m`;
-  };
-
-  return (
-    <TouchableOpacity
-      style={styles.breathingStatsCard}
-      onPress={() => router.push("/tools/breathing-history")}
-    >
-      <Text style={styles.recommendationsTitle}>Breathing Practice</Text>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{formatTime(totalTime)}</Text>
-          <Text style={styles.statLabel}>Total Time</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{sessions}</Text>
-          <Text style={styles.statLabel}>Sessions</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};

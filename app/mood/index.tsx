@@ -13,9 +13,10 @@ import { useRouter } from "expo-router";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
+import { IoniconsName } from "../../types/dataTypes"; // Import the type
 
-// Define the mood options
-const moodOptions = [
+// Define the mood options with the correct icon type
+const moodOptions: { id: number; name: string; icon: IoniconsName; color: string }[] = [
   { id: 1, name: "Happy", icon: "happy-outline", color: "#FFD700" },
   { id: 2, name: "Calm", icon: "leaf-outline", color: "#4E9F3D" },
   { id: 3, name: "Anxious", icon: "pulse-outline", color: "#FFB347" },
@@ -221,7 +222,8 @@ export default function MoodScreen() {
                 { backgroundColor: mood.color + "30" }, // Light version of the color
               ]}
             >
-              <Ionicons name={mood.icon as any} size={28} color={mood.color} />
+              {/* <Ionicons name={mood.icon as any} size={28} color={mood.color} /> */}
+              <Ionicons name={mood.icon} size={28} color={mood.color} />
             </View>
             <Text style={styles.moodName}>{mood.name}</Text>
           </TouchableOpacity>
@@ -275,7 +277,8 @@ export default function MoodScreen() {
       <View style={styles.historyLinkContainer}>
         <TouchableOpacity
           style={styles.historyLink}
-          onPress={() => router.push("/mood/history" as any)}
+          // onPress={() => router.push("/mood/history" as any)}
+          onPress={() => router.push("/mood/history")}
         >
           <Text style={styles.historyLinkText}>View Mood History</Text>
           <Ionicons name="chevron-forward" size={16} color="#4E9F3D" />

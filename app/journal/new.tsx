@@ -14,27 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
-
-interface MoodEntry {
-  id: number;
-  mood: {
-    id: number;
-    name: string;
-    icon: string;
-    color: string;
-  };
-  intensity: number;
-  notes: string;
-  timestamp: string;
-}
-
-interface MeditationSession {
-  id: number;
-  meditationId: string;
-  duration: number;
-  rating?: number;
-  timestamp: string;
-}
+import { MoodEntry, MeditationSession } from "../../types/dataTypes";
 
 export default function NewJournalEntryScreen() {
   const [title, setTitle] = useState("");
@@ -372,7 +352,7 @@ export default function NewJournalEntryScreen() {
                   ]}
                 >
                   <Ionicons
-                    name={latestMood.mood.icon as any}
+                    name={latestMood.mood.icon}
                     size={18}
                     color={latestMood.mood.color}
                   />

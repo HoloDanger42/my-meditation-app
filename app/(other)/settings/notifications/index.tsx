@@ -21,7 +21,7 @@ import {
   getSavedReminderTimes,
   cancelScheduledNotification,
 } from "../../../../utils/notifications";
-import { removeSecureItem } from "../../../../utils/secureStorage"; // <-- Import removeSecureItem
+import { removeSecureItem } from "../../../../utils/secureStorage";
 
 // Define prop types for CustomTimePicker
 interface CustomTimePickerProps {
@@ -220,7 +220,7 @@ export default function NotificationSettingsScreen() {
       );
     } else {
       await cancelScheduledNotification("meditation-reminder");
-      await removeSecureItem("meditation_reminder_time"); // <-- Add this line
+      await removeSecureItem("meditation_reminder_time");
     }
   };
 
@@ -233,6 +233,7 @@ export default function NotificationSettingsScreen() {
       );
     } else {
       await cancelScheduledNotification("journal-reminder");
+      await removeSecureItem("journal_reminder_time");
     }
   };
 
@@ -245,6 +246,7 @@ export default function NotificationSettingsScreen() {
       );
     } else {
       await cancelScheduledNotification("mood-reminder");
+      await removeSecureItem("mood_reminder_time");
     }
   };
 
@@ -257,6 +259,7 @@ export default function NotificationSettingsScreen() {
       );
     } else {
       await cancelScheduledNotification("personalized-reminder");
+      await removeSecureItem("personalized_reminder_time");
     }
   };
 

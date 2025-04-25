@@ -242,7 +242,7 @@ export default function JournalViewScreen() {
               ]}
             >
               <Ionicons
-                name={entry.mood.mood.icon as any}
+                name={entry.mood.mood.icon}
                 size={20}
                 color={entry.mood.mood.color}
               />

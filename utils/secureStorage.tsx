@@ -3,9 +3,11 @@ import { encryptData, decryptData } from "./encryption";
 import {
   syncItemToFirestore,
   fetchItemFromFirestore,
-  checkedKeys,
 } from "./firestoreSync";
 import { debounce } from "lodash";
+
+// Define checkedKeys here
+const checkedKeys = new Set<string>();
 
 // Prefix to identify encrypted data
 const OLD_ENCRYPTION_PREFIX = "enc:";

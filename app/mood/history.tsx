@@ -12,19 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
 import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
-
-interface MoodEntry {
-  id: number;
-  mood: {
-    id: number;
-    name: string;
-    icon: string;
-    color: string;
-  };
-  intensity: number;
-  notes: string;
-  timestamp: string;
-}
+import { MoodEntry } from "../../types/dataTypes";
 
 export default function MoodHistoryScreen() {
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
@@ -195,11 +183,7 @@ export default function MoodHistoryScreen() {
         <View
           style={[styles.moodIcon, { backgroundColor: item.mood.color + "30" }]}
         >
-          <Ionicons
-            name={item.mood.icon as any}
-            size={24}
-            color={item.mood.color}
-          />
+          <Ionicons name={item.mood.icon} size={24} color={item.mood.color} />
         </View>
         <View style={styles.entryMeta}>
           <Text style={styles.moodName}>{item.mood.name}</Text>
