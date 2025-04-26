@@ -25,33 +25,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   useEffect(() => {
+    let subscriber: (() => void) | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     try {
-      const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+      subscriber = auth().onAuthStateChanged(onAuthStateChanged);
 
       // Safety timeout to ensure initializing is set to false
-      const timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (initializing) {
-          console.log("Auth initialization timed out, forcing completion");
+          console.warn("Auth initialization timed out, forcing completion");
           setInitializing(false);
         }
-      }, 3000);
-
-      return () => {
-        subscriber(); // unsubscribe on unmount
-        clearTimeout(timeoutId);
-      };
+      }, 5000);
     } catch (error) {
       console.error("Error setting up auth state listener:", error);
-      setInitializing(false); // Make sure to set initializing to false on error
-      return () => {}; // Return empty cleanup function
+      setInitializing(false);
     }
+
+    // Cleanup function
+    return () => {
+      if (subscriber) {
+        subscriber(); // Unsubscribe on unmount
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   const login = async (email: string, pass: string) => {
     try {
       await auth().signInWithEmailAndPassword(email, pass);
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("Login failed:", error.code, error.message);
       throw error; // Re-throw to handle in UI
     }
   };
@@ -60,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await auth().createUserWithEmailAndPassword(email, pass);
     } catch (error: any) {
-      console.error("Signup failed:", error);
+      console.error("Signup failed:", error.code, error.message);
       throw error; // Re-throw to handle in UI
     }
   };
@@ -70,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await auth().signOut();
     } catch (error) {
       console.error("Logout failed:", error);
+      throw error;
     }
   };
 

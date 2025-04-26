@@ -59,7 +59,10 @@ export default function JournalScreen() {
               setEntries(updatedEntries);
             } catch (error) {
               console.error("Failed to delete journal entry: ", error);
-              Alert.alert("Error", "Failed to deletethe entry");
+              Alert.alert(
+                "Deletion Failed",
+                "Unfortunately, the journal entry could not be deleted. Please try again."
+              );
             }
           },
         },
@@ -107,7 +110,8 @@ export default function JournalScreen() {
             <Ionicons name={item.mood.icon} size={16} color={item.mood.color} />
           </View>
           <Text style={[styles.moodText, { color: theme.textSecondary }]}>
-            {item.mood.name} {item.moodIntensity ? `(${item.moodIntensity}/5)` : ''}
+            {item.mood.name}{" "}
+            {item.moodIntensity ? `(${item.moodIntensity}/5)` : ""}
           </Text>
         </View>
       )}

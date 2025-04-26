@@ -28,7 +28,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Please fill in all fields");
+      Alert.alert("Input Required", "Please fill in both email and password.");
       return;
     }
 
@@ -36,18 +36,29 @@ export default function LoginScreen() {
       setLoading(true);
       await login(email, password);
     } catch (error: any) {
-      let message = "Login failed";
+      let message = "An unexpected error occurred during login.";
+
       if (
         error.code === "auth/user-not-found" ||
-        error.code === "auth/wrong-password"
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/invalid-credential"
       ) {
-        message = "Invalid email or password";
+        message =
+          "Invalid email or password. Please check your credentials and try again.";
       } else if (error.code === "auth/invalid-email") {
-        message = "Please enter a valid email";
+        message =
+          "The email address you entered is not valid. Please check the format.";
       } else if (error.code === "auth/too-many-requests") {
-        message = "Too many failed login attempts, please try again later";
+        message =
+          "Access to this account has been temporarily disabled due to many failed login attempts. You can try again later.";
+      } else if (error.code === "auth/network-request-failed") {
+        message =
+          "Could not connect to the login service. Please check your internet connection.";
       }
-      Alert.alert("Error", message);
+      // Log the original error for debugging purposes
+      console.error("Login UI Error:", error.code, error.message);
+
+      Alert.alert("Login Failed", message);
     } finally {
       setLoading(false);
     }

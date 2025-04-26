@@ -31,17 +31,23 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!email || !password || !confirmPassword) {
-      Alert.alert("Please fill in all fields");
+      Alert.alert("Input Required", "Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Passwords don't match");
+      Alert.alert(
+        "Password Mismatch",
+        "The passwords you entered do not match"
+      );
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Password must be at least 6 characters");
+      Alert.alert(
+        "Password Too Short",
+        "Password must be at least 6 characters long"
+      );
       return;
     }
 
@@ -49,15 +55,26 @@ export default function SignupScreen() {
       setLoading(true);
       await signup(email, password);
     } catch (error: any) {
-      let message = "Signup failed";
+      let title = "Signup Failed";
+      let message = "An unexpected error occurred during signup.";
+
       if (error.code === "auth/email-already-in-use") {
-        message = "That email address is already in use";
+        message =
+          "The email address you entered is already registered. Please try logging in instead.";
       } else if (error.code === "auth/invalid-email") {
-        message = "Please enter a valid email";
+        message =
+          "The email address you entered is not valid. Please check the format.";
       } else if (error.code === "auth/weak-password") {
-        message = "Password should be at least 6 characters";
+        title = "Password Too Weak";
+        message = "Your password should be at least 6 characters long.";
+      } else if (error.code === "auth/network-request-failed") {
+        message =
+          "Could not connect to the signup service. Please check your internet connection.";
       }
-      Alert.alert("Error", message);
+      // Log the original error for debugging purposes
+      console.error("Signup UI Error:", error.code, error.message);
+
+      Alert.alert(title, message);
     } finally {
       setLoading(false);
     }

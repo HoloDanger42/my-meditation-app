@@ -349,7 +349,7 @@ export default function MeditationPlayerScreen() {
 
   // Session management
   async function saveSession(duration: number, rating?: number) {
-    const session = {
+    const session: MeditationSession = {
       id: Date.now(),
       meditationId: String(id),
       duration,
@@ -358,8 +358,9 @@ export default function MeditationPlayerScreen() {
     };
 
     try {
-      const sessions =
-        (await getSecureItem<MeditationSession[]>("meditation_sessions")) || [];
+      let sessions = await getSecureItem<MeditationSession[]>(
+        "meditation_sessions"
+      );
 
       // Check if sessions is an array before using array methods
       if (!Array.isArray(sessions)) {

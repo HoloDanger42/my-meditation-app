@@ -69,11 +69,16 @@ export default function SettingsScreen() {
               { text: "Cancel", style: "cancel" },
               {
                 text: "Log Out",
+                style: "destructive",
                 onPress: async () => {
                   try {
                     await logout();
                   } catch (error) {
                     console.error("Logout failed", error);
+                    Alert.alert(
+                      "Logout Failed",
+                      "An error occurred while trying to log out. Please try again."
+                    );
                   }
                 },
               },

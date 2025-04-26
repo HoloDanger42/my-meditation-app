@@ -41,7 +41,7 @@ export default function MoodScreen() {
 
   const saveMoodEntry = async () => {
     if (selectedMood === null) {
-      Alert.alert("Please select a mood");
+      Alert.alert("Input Required", "Please select a mood before saving.");
       return;
     }
 
@@ -51,13 +51,16 @@ export default function MoodScreen() {
 
       // If entries is null/undefined or not an array, initialize it as an empty array
       if (!entries || !Array.isArray(entries)) {
+        console.warn(
+          "'mood_entries' was not an array or was null, initializing."
+        );
         entries = [];
       }
 
       // Create new entry
-      const newEntry = {
+      const newEntry: MoodEntry = {
         id: Date.now(),
-        mood: moodOptions.find((mood) => mood.id === selectedMood),
+        mood: moodOptions.find((mood) => mood.id === selectedMood)!,
         intensity,
         notes,
         timestamp: new Date().toISOString(),
@@ -70,8 +73,11 @@ export default function MoodScreen() {
         { text: "OK", onPress: () => router.push("/") },
       ]);
     } catch (error) {
-      console.error("Failed to save mood:", error);
-      Alert.alert("Error", "Failed to save your mood entry");
+      console.error("Failed to save mood entry:", error);
+      Alert.alert(
+        "Save Failed",
+        "Unfortunately, your mood entry could not be saved. Please try again."
+      );
     }
   };
 
