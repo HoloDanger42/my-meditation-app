@@ -175,78 +175,123 @@ async function old_decryptNative(
   }
 }
 
-async function old_decryptData(encryptedData: string): Promise<any> {
-  try {
-    if (!encryptedData) return null;
+async function old_decryptData(rawDataFromStorage: string): Promise<any> {
+  console.log(
+    `Migration Debug: old_decryptData received input starting with: ${rawDataFromStorage.substring(
+      0,
+      100
+    )}...`
+  );
 
-    if (encryptedData.startsWith("plain:")) {
-      const plainData = encryptedData.substring(6);
+  try {
+    if (!rawDataFromStorage) return null;
+
+    let dataToProcess = rawDataFromStorage;
+    let isPotentiallyEncrypted = false;
+
+    if (rawDataFromStorage.startsWith("plain:")) {
+      const plainData = rawDataFromStorage.substring(6);
+      console.log("Migration: Detected 'plain:' prefix.");
       try {
         return JSON.parse(plainData);
       } catch {
         return plainData;
       }
-    }
-
-    const keyHex = await old_getEncryptionKey();
-    const ivHex = await old_getIV();
-    const salt = await old_getSalt();
-
-    if (!keyHex || !ivHex || !salt) {
-      console.error(
-        "Migration: Could not retrieve old key/IV/salt. Decryption impossible."
+    } else if (rawDataFromStorage.startsWith("simple:")) {
+      console.log("Migration: Detected 'simple:' prefix.");
+      dataToProcess = rawDataFromStorage.substring(7);
+      isPotentiallyEncrypted = true;
+    } else if (rawDataFromStorage.startsWith("aes:")) {
+      console.log("Migration: Detected 'aes:' prefix.");
+      dataToProcess = rawDataFromStorage.substring(4);
+      isPotentiallyEncrypted = true;
+    } else {
+      // No known prefix, could be plain JSON or maybe encrypted without prefix
+      console.log("Migration: No known prefix detected.");
+      dataToProcess = rawDataFromStorage;
+      // Assume it might be encrypted if it doesn't look like JSON
+      isPotentiallyEncrypted = !(
+        dataToProcess.trim().startsWith("{") ||
+        dataToProcess.trim().startsWith("[")
       );
-      if (keyHex && encryptedData.startsWith("simple:")) {
-        return old_simpleDecrypt(encryptedData, keyHex);
-      }
-      throw new Error("Missing old encryption materials");
     }
 
-    if (encryptedData.startsWith("simple:")) {
-      const decryptedSimple = await old_simpleDecrypt(encryptedData, keyHex);
-      try {
-        return JSON.parse(decryptedSimple);
-      } catch {
-        return decryptedSimple;
-      }
-    }
+    if (isPotentiallyEncrypted) {
+      const keyHex = await old_getEncryptionKey();
+      const ivHex = await old_getIV();
+      const salt = await old_getSalt();
 
-    if (isExpoGo) {
-      console.warn("Migration: Attempting simple decrypt for Expo Go data");
-      const decryptedSimple = await old_simpleDecrypt(encryptedData, keyHex);
-      try {
-        return JSON.parse(decryptedSimple);
-      } catch {
-        return decryptedSimple;
-      }
-    }
+      if (keyHex && ivHex && salt) {
+        console.log("Migration: Keys found. Attempting decryption...");
+        try {
+          let decryptedString;
+          // Prioritize simple decrypt if original prefix was 'simple:' or if ExpoGo/Web fallback needed
+          if (
+            rawDataFromStorage.startsWith("simple:") ||
+            isExpoGo ||
+            Platform.OS === "web"
+          ) {
+            console.log("Migration: Attempting simple decryption path...");
+            // Pass the stripped dataToProcess
+            decryptedString = await old_simpleDecrypt(dataToProcess, keyHex);
+          } else {
+            console.log("Migration: Attempting native decryption path...");
+            // Pass the stripped dataToProcess
+            decryptedString = await old_decryptNative(
+              dataToProcess,
+              keyHex,
+              ivHex,
+              salt
+            );
+          }
 
-    let decryptedString;
-    try {
-      if (Platform.OS === "web") {
-        decryptedString = await old_decryptWeb(
-          encryptedData,
-          keyHex,
-          ivHex,
-          salt
-        );
+          // Decryption attempt finished (may have fallen back to simple within native/web)
+          console.log(
+            "Migration: Decryption attempt complete. Trying to parse result."
+          );
+          try {
+            // Try parsing the result of decryption
+            return JSON.parse(decryptedString);
+          } catch (parseError) {
+            console.warn(
+              "Migration: Failed to parse decrypted string as JSON. Returning raw decrypted string.",
+              parseError
+            );
+            return decryptedString;
+          }
+        } catch (decryptionError) {
+          // Catch errors from the decryption functions themselves (e.g., base64 errors if stripping prefix didn't help)
+          console.error(
+            "Migration: Decryption function failed:",
+            decryptionError
+          );
+          // Fall through to try parsing the original raw data
+        }
       } else {
-        decryptedString = await old_decryptNative(
-          encryptedData,
-          keyHex,
-          ivHex,
-          salt
+        console.warn(
+          "Migration: Data looked encrypted, but old key/IV/salt not found. Cannot decrypt."
         );
       }
-    } catch (specificError) {
-      console.error(
-        "Migration: Decryption failed after fallbacks.",
-        specificError
-      );
-      throw new Error("Decryption failed");
     }
+
+    try {
+      console.log(
+        "Migration: Fallback - Attempting to parse original raw data directly as JSON."
+      );
+      return JSON.parse(rawDataFromStorage);
+    } catch (jsonError) {
+      console.error(
+        `Migration: FINAL FAILURE - Failed to decrypt AND failed to parse raw data as JSON. Raw data: ${rawDataFromStorage.substring(
+          0,
+          100
+        )}...`,
+        jsonError
+      );
+    }
+
+    return null;
   } catch (error) {
-    console.error("Migration: Decryption error:", error);
+    console.error("Migration: Critical error within old_decryptData:", error);
     return null;
   }
 }
@@ -255,20 +300,23 @@ export async function old_readAndDecryptFromAsyncStorage<T>(
   key: string
 ): Promise<T | null> {
   try {
-    const encryptedData = await AsyncStorage.getItem(key);
+    const rawDataFromStorage = await AsyncStorage.getItem(key);
 
-    if (encryptedData === null) {
+    if (rawDataFromStorage === null) {
       return null;
     }
 
-    const decryptedData = await old_decryptData(encryptedData);
+    console.log(
+      `Migration Debug: Raw data from AsyncStorage for key '${key}':`,
+      rawDataFromStorage.substring(0, 100) +
+        (rawDataFromStorage.length > 100 ? "..." : "")
+    );
+
+    const decryptedData = await old_decryptData(rawDataFromStorage);
 
     if (decryptedData === null) {
       console.error(
-        `Migration: Failed to decrypt data for key: ${key}. Original data: ${encryptedData.substring(
-          0,
-          50
-        )}...`
+        `Migration: Failed to decrypt or parse data for key '${key}'.`
       );
       return null;
     }

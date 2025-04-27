@@ -4,6 +4,18 @@ import {
   removeOldAsyncStorageItem,
 } from "./migrationUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SyncInterface } from "./storageInterfaces";
+
+// Will be set by firestoreSync.ts after initialization
+let syncProvider: SyncInterface | null = null;
+
+/**
+ * Registers a sync provider to handle Firestore synchronization
+ * Called by firestoreSync.ts during initialization
+ */
+export function registerSyncProvider(provider: SyncInterface): void {
+  syncProvider = provider;
+}
 
 /**
  * Get item from secure storage.
@@ -48,6 +60,13 @@ export async function setSecureItem(key: string, data: any): Promise<void> {
     await SecureStore.setItemAsync(key, jsonString, {
       requireAuthentication: false,
     });
+
+    // Sync the original object to Firestore if a provider is registered
+    if (syncProvider) {
+      syncProvider.syncItem(key, data).catch((error) => {
+        console.error(`Background sync failed for key ${key}:`, error);
+      });
+    }
   } catch (error) {
     console.error(`Error setting secure item for key ${key}:`, error);
     throw new Error("Failed to store secure data");
@@ -60,6 +79,13 @@ export async function setSecureItem(key: string, data: any): Promise<void> {
 export async function removeSecureItem(key: string): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(key, {});
+    
+    // Use sync provider with null to delete the field in Firestore
+    if (syncProvider) {
+      syncProvider.syncItem(key, null).catch((error) => {
+        console.error(`Background sync (removal) failed for key ${key}:`, error);
+      });
+    }
   } catch (error) {
     console.error(`Error removing secure item for key ${key}:`, error);
   }
