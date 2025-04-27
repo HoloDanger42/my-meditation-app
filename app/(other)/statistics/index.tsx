@@ -19,17 +19,25 @@ import {
   JournalEntry,
   MeditationSession,
 } from "../../../types/dataTypes";
+import {
+  getCurrentStreak,
+  getTotalMeditationMinutes,
+  getTotalMeditationSessions,
+} from "../../../utils/stats";
 
 export default function StatisticsScreen() {
   const [moodData, setMoodData] = useState<MoodEntry[]>([]);
   const [journalData, setJournalData] = useState<JournalEntry[]>([]);
-  const [meditationSessions, setMeditationSessions] = useState<
-    MeditationSession[]
-  >([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { theme, isDark } = useTheme();
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [totalMinutes, setTotalMinutes] = useState(0);
+  const [currentStreak, setCurrentStreak] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
+  const [meditationSessionsForChart, setMeditationSessionsForChart] = useState<
+    MeditationSession[]
+  >([]);
 
   // Wrap loadData in useCallback
   const loadData = useCallback(async () => {
@@ -45,44 +53,52 @@ export default function StatisticsScreen() {
       );
       setJournalData(journalEntries || []);
 
-      // Load meditation sessions
+      // Load Aggregate Stats
+      const [sessionsCount, minutesCount, streakCount] = await Promise.all([
+        getTotalMeditationSessions(),
+        getTotalMeditationMinutes(),
+        getCurrentStreak(),
+      ]);
+      setTotalSessions(sessionsCount);
+      setTotalMinutes(minutesCount);
+      setCurrentStreak(streakCount);
+
+      // Load Full Meditation Sessions for Charts
+      // TODO: Optimize this further by storing aggregate rating and daily sums separately
       const sessions = await getSecureItem<MeditationSession[]>(
         "meditation_sessions"
       );
+      setMeditationSessionsForChart(sessions || []);
 
-      if (sessions && Array.isArray(sessions)) {
-        setMeditationSessions(sessions);
-
-        // Calculate average rating
-        const sessionsWithRatings = sessions.filter(
-          (s: MeditationSession) => s.rating && s.rating > 0
-        );
-        if (sessionsWithRatings.length > 0) {
-          const total = sessionsWithRatings.reduce(
-            (sum: number, s: MeditationSession) => sum + s.rating!,
+      // Calculate average rating using the loaded sessions
+      if (sessions && sessions.length > 0) {
+        const ratedSessions = sessions.filter((s) => s.rating && s.rating > 0);
+        if (ratedSessions.length > 0) {
+          const totalRating = ratedSessions.reduce(
+            (sum, s) => sum + (s.rating || 0),
             0
           );
-          setAverageRating(
-            parseFloat((total / sessionsWithRatings.length).toFixed(1))
-          );
+          setAverageRating(totalRating / ratedSessions.length);
         } else {
-          setAverageRating(0); // Reset if no ratings
+          setAverageRating(0);
         }
       } else {
-        setMeditationSessions([]); // Reset if no sessions
         setAverageRating(0);
       }
     } catch (error) {
-      console.error("Failed to load data:", error);
-      // Reset state on error
+      console.error("Failed to load statistics data:", error);
+      // Reset states on error
       setMoodData([]);
       setJournalData([]);
-      setMeditationSessions([]);
+      setTotalSessions(0);
+      setTotalMinutes(0);
+      setCurrentStreak(0);
       setAverageRating(0);
+      setMeditationSessionsForChart([]);
     } finally {
-      setLoading(false);
+      setLoading(false); // Set loading false when fetching finishes
     }
-  }, []); // Empty dependency array for useCallback as loadData doesn't depend on props/state outside its scope
+  }, []);
 
   // Use useFocusEffect to load data when the screen is focused
   useFocusEffect(
@@ -90,46 +106,65 @@ export default function StatisticsScreen() {
       console.log("StatisticsScreen focused, loading data..."); // Add log
       loadData();
 
-      return () => {
-        // Optional cleanup
-        // console.log("StatisticsScreen blurred");
-      };
+      return () => {};
     }, [loadData]) // Dependency array includes loadData
   );
 
   const getMeditationChartData = () => {
-    if (meditationSessions.length === 0) {
+    // Use the state variable containing meditation sessions
+    if (meditationSessionsForChart.length === 0) {
       return {
         labels: [],
         datasets: [{ data: [] }],
       };
     }
 
-    // Get the last 7 days of sessions
-    const lastWeekSessions = [...meditationSessions]
-      .sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )
-      .slice(0, 7)
-      .reverse();
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0); // Start of the 7th day ago
+
+    // Filter sessions within the last 7 days
+    const lastWeekSessions = meditationSessionsForChart.filter((session) => {
+      const sessionDate = new Date(session.timestamp);
+      return sessionDate >= sevenDaysAgo;
+    });
+
+    // Sort the filtered sessions by date ascending for correct chart order
+    lastWeekSessions.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
 
     // Group by day and sum duration
     const dailyData: { [key: string]: number } = {};
+    const labelsMap: { [key: string]: string } = {}; // To store labels in order
+
+    // Initialize data for the last 7 days to ensure all days are shown
+    for (let i = 6; i >= 0; i--) {
+      // Iterate backwards to get chronological order easily
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
+      const label = `${date.getMonth() + 1}/${date.getDate()}`; // MM/DD
+      dailyData[dayKey] = 0;
+      labelsMap[dayKey] = label;
+    }
 
     lastWeekSessions.forEach((session) => {
       const date = new Date(session.timestamp);
-      const day = `${date.getMonth() + 1}/${date.getDate()}`;
+      const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
 
-      if (!dailyData[day]) {
-        dailyData[day] = 0;
+      // Ensure the dayKey exists (it should due to initialization)
+      if (dailyData.hasOwnProperty(dayKey)) {
+        dailyData[dayKey] += Math.round(session.duration / 60);
       }
-      dailyData[day] += Math.round(session.duration / 60); // Convert to minutes
     });
 
-    // Create chart data
-    const labels = Object.keys(dailyData);
-    const data = Object.values(dailyData);
+    // Create chart data in chronological order using the initialized keys
+    const sortedDays = Object.keys(labelsMap).sort(); // Sort YYYY-MM-DD keys
+    const labels = sortedDays.map((dayKey) => labelsMap[dayKey]);
+    const data = sortedDays.map((dayKey) => dailyData[dayKey]);
 
     return {
       labels,
@@ -179,7 +214,7 @@ export default function StatisticsScreen() {
     const lastWeekEntries = sortedData.slice(-7);
 
     // Format for gifted-charts: array of objects { value: number, label: string, dataPointText: string }
-    return lastWeekEntries.map((entry, index) => {
+    return lastWeekEntries.map((entry) => {
       const date = new Date(entry.timestamp);
       const label = `${date.getMonth() + 1}/${date.getDate()}`; // Format as MM/DD
       return {
@@ -383,6 +418,11 @@ export default function StatisticsScreen() {
     );
   }
 
+  // Use the state variables for aggregate stats
+  const totalMeditationSessions = totalSessions;
+  const totalMeditationMinutes = totalMinutes;
+  const currentMeditationStreak = currentStreak;
+
   return (
     <View style={styles.container}>
       <StatusBar style={isDark ? "light" : "dark"} />
@@ -491,26 +531,22 @@ export default function StatisticsScreen() {
                     {getMoodDistributionData().labels.map((label, index) => {
                       const value =
                         getMoodDistributionData().datasets[0].data[index];
-                      const maxValue = Math.max(
-                        ...getMoodDistributionData().datasets[0].data
-                      );
                       return (
-                        <View key={index} style={styles.distributionItem}>
-                          <Text style={styles.distributionLabel}>
-                            {label.length > 10
-                              ? label.substring(0, 10) + "..."
-                              : label}
-                          </Text>
+                        <View style={styles.distributionItem} key={label}>
+                          <Text style={styles.distributionLabel}>{label}</Text>
                           <View style={styles.distributionBarContainer}>
                             <View
                               style={[
                                 styles.distributionBar,
                                 {
-                                  width: `${(value / maxValue) * 100}%`,
-                                  backgroundColor: getColorForMood(
-                                    label,
-                                    moodData
-                                  ),
+                                  width: `${
+                                    (value /
+                                      Math.max(
+                                        ...getMoodDistributionData().datasets[0]
+                                          .data
+                                      )) *
+                                    100
+                                  }%`,
                                 },
                               ]}
                             />
@@ -608,17 +644,17 @@ export default function StatisticsScreen() {
               {getJournalEntriesThisWeek(journalData)}
             </Text>
             <Text style={styles.insightText}>
-              • Total listening sessions: {meditationSessions.length}
+              • Total listening sessions: {totalMeditationSessions}
             </Text>
             <Text style={styles.insightText}>
               • Average session rating:{" "}
-              {averageRating > 0 ? averageRating : "No ratings"}
+              {averageRating > 0 ? averageRating.toFixed(1) : "No ratings"}
             </Text>
             <Text style={styles.insightText}>
-              • Total minutes listened:{" "}
-              {Math.round(
-                meditationSessions.reduce((sum, s) => sum + s.duration, 0) / 60
-              )}
+              • Total minutes listened: {totalMeditationMinutes}
+            </Text>
+            <Text style={styles.insightText}>
+              • Current meditation streak: {currentMeditationStreak} days
             </Text>
           </View>
         </ScrollView>

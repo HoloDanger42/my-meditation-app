@@ -38,25 +38,6 @@ try {
   console.error("Failed to clean Android build:", error.message);
 }
 
-// Fix the dependency cycle
-console.log("🔄 Fixing dependency cycle...");
-try {
-  const packageJsonPath = path.join(__dirname, "..", "package.json");
-  const packageJson = require(packageJsonPath);
-
-  // Remove self-reference
-  if (
-    packageJson.dependencies &&
-    packageJson.dependencies["my-meditation-app"]
-  ) {
-    delete packageJson.dependencies["my-meditation-app"];
-    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-    console.log("✅ Removed self-reference from package.json");
-  }
-} catch (error) {
-  console.error("Failed to fix package.json:", error.message);
-}
-
 // Reinstall dependencies
 console.log("📥 Reinstalling dependencies...");
 try {

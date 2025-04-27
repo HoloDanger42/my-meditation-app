@@ -118,15 +118,6 @@ export default function SessionHistoryScreen() {
           }
         />
       </View>
-
-      <View style={styles.bottomButton}>
-        <TouchableOpacity
-          style={[styles.longButton, { backgroundColor: theme.accent }]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.longButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -181,11 +172,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
     fontStyle: "italic",
-  },
-  bottomButton: {
-    alignItems: "center",
-    marginBottom: 20,
-    paddingHorizontal: 20,
   },
   longButton: {
     paddingVertical: 15,

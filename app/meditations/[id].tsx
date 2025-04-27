@@ -23,8 +23,12 @@ import { Audio, AVPlaybackStatus } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { meditationsData } from "../../data/meditationsData";
-import { getSecureItem, setSecureItem } from "../../utils/secureStorage";
+import {
+  getSecureItem,
+  setSecureItem,
+} from "../../utils/secureStorage";
 import { MeditationSession } from "../../types/dataTypes";
+import { getTotalMeditationMinutes, getTotalMeditationSessions } from "../../utils/stats";
 
 const BACKGROUNDS = [
   require("../../assets/images/meditation-bg-1.jpg"),
@@ -388,7 +392,7 @@ export default function MeditationPlayerScreen() {
         status.didJustFinish ||
         (currentPosition >= duration && duration > 0)
       ) {
-        handleEndSession();
+        // handleEndSession();
       }
     }
   };
@@ -459,12 +463,18 @@ export default function MeditationPlayerScreen() {
     [duration, sound, isPlaying]
   );
 
+  // Define structure for streak info
+  interface StreakInfo {
+    lastSessionDate: string | null; // ISO Date string (YYYY-MM-DD)
+    currentStreak: number;
+  }
+
   // Session management
   async function saveSession(duration: number, rating?: number) {
     const session: MeditationSession = {
       id: Date.now(),
       meditationId: String(id),
-      duration,
+      duration, // Duration in seconds
       rating: rating || 0,
       timestamp: new Date().toISOString(),
     };
@@ -473,17 +483,53 @@ export default function MeditationPlayerScreen() {
       let sessions = await getSecureItem<MeditationSession[]>(
         "meditation_sessions"
       );
-
-      // Ensure sessions is an array
       if (!sessions || !Array.isArray(sessions)) {
-        console.warn(
-          "'meditation_sessions' was not an array or was null, initializing."
-        );
         sessions = [];
       }
+      const updatedSessions = [...sessions, session];
+      await setSecureItem("meditation_sessions", updatedSessions);
 
-      // Add the new session and save
-      await setSecureItem("meditation_sessions", [...sessions, session]);
+      // Update Aggregate Stats
+      try {
+        const currentTotalSessions = await getTotalMeditationSessions(); // Uses the new optimized getter
+        const currentTotalMinutes = await getTotalMeditationMinutes(); // Uses the new optimized getter
+        const currentStreakInfo = await getSecureItem<StreakInfo>("stats_streakInfo");
+
+        // Update totals
+        await setSecureItem("stats_totalSessions", currentTotalSessions + 1);
+        await setSecureItem("stats_totalMinutes", currentTotalMinutes + Math.round(duration / 60));
+
+        // Update streak
+        const today = new Date();
+        const todayDateString = today.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        let newStreak = 1;
+        if (currentStreakInfo?.lastSessionDate) {
+          const lastDate = new Date(currentStreakInfo.lastSessionDate);
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          const yesterdayDateString = yesterday.toISOString().split("T")[0];
+
+          if (currentStreakInfo.lastSessionDate === todayDateString) {
+            // Multiple sessions on the same day don't increase streak beyond 1 for that day
+            newStreak = currentStreakInfo.currentStreak;
+          } else if (currentStreakInfo.lastSessionDate === yesterdayDateString) {
+            // Session yesterday, continue streak
+            newStreak = currentStreakInfo.currentStreak + 1;
+          }
+          // Else: Gap day, streak resets to 1 (already default)
+        }
+
+        const newStreakInfo: StreakInfo = {
+          lastSessionDate: todayDateString,
+          currentStreak: newStreak,
+        };
+        await setSecureItem("stats_streakInfo", newStreakInfo);
+
+      } catch (statsError) {
+        console.error("Failed to update aggregate statistics:", statsError);
+        // Non-fatal, session was saved, but stats might be inaccurate
+      }
     } catch (error) {
       console.error("Failed to save meditation session:", error);
       Alert.alert(
@@ -499,18 +545,15 @@ export default function MeditationPlayerScreen() {
       try {
         stopTimer();
         setIsPlaying(false);
-        await cleanupAudio(currentSound);
-        setSound(null);
       } catch (error) {
-        console.error("Error cleaning up audio in handleEndSession:", error);
-        setSound(null);
+        console.error("Error stopping audio in handleEndSession:", error);
       }
     }
     setShowRatingPanel(true);
   }
 
   async function handleRating(rating: number) {
-    saveSession(timeElapsed, rating);
+    saveSession(timeElapsed, rating); // Save before cleanup
     setIsPlaying(false);
     setTimeElapsed(0);
     setShowRatingPanel(false);
@@ -522,14 +565,14 @@ export default function MeditationPlayerScreen() {
         setSound(null);
       } catch (error) {
         console.error("Error cleaning up audio in handleRating:", error);
-        setSound(null);
+        setSound(null); // Ensure sound is nullified even on error
       }
     }
     router.back();
   }
 
   async function skipRating() {
-    saveSession(timeElapsed);
+    saveSession(timeElapsed); // Save before cleanup
     setIsPlaying(false);
     setTimeElapsed(0);
     setShowRatingPanel(false);
@@ -541,7 +584,7 @@ export default function MeditationPlayerScreen() {
         setSound(null);
       } catch (error) {
         console.error("Error cleaning up audio in skipRating:", error);
-        setSound(null);
+        setSound(null); // Ensure sound is nullified even on error
       }
     }
     router.back();
