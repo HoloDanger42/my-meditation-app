@@ -74,7 +74,7 @@ export async function scheduleMeditationReminder(hour: number, minute: number) {
   const identifier = await Notifications.scheduleNotificationAsync({
     content: {
       title: "Time for Mindfulness",
-      body: "Take a moment to meditate and center yourself today.",
+      body: "Take a moment to relax with some calming music.",
       data: { type: "meditation-reminder" },
     },
     trigger: {
@@ -150,8 +150,8 @@ export async function schedulePostMeditationNotification(
 ) {
   const identifier = await Notifications.scheduleNotificationAsync({
     content: {
-      title: "How was your meditation?",
-      body: "Would you like to journal about your experience?",
+      title: "How do you feel?",
+      body: "Would you like to journal about your listening experience?",
       data: { type: "post-meditation" },
     },
     trigger: {
@@ -175,9 +175,9 @@ export async function schedulePersonalizedReminder(
 
   // Use the mood insights to create a personalized message
   const personalizedMessage = recommendations?.moodInsights
-    ? `Based on your recent ${recommendations.dominantMood || "mood"}, a ${
-        recommendations.recommendedMeditations[0]?.title || "short"
-      } meditation might help.`
+    ? `Based on your recent ${recommendations.dominantMood || "mood"}, the ${
+        recommendations.recommendedMeditations[0]?.title || "Calm"
+      } music track might help.`
     : "Take a moment for mindfulness today.";
 
   const identifier = await Notifications.scheduleNotificationAsync({

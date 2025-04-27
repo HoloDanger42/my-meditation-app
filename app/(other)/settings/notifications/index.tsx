@@ -331,7 +331,7 @@ export default function NotificationSettingsScreen() {
         >
           <View style={styles.settingLeft}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>
-              Meditation Reminder
+              Relaxation Reminder
             </Text>
             <Text
               style={[styles.settingDetail, { color: theme.textSecondary }]}

@@ -1,74 +1,29 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { encryptData, decryptData } from "./encryption";
+import * as SecureStore from "expo-secure-store";
 import {
-  syncItemToFirestore,
-  fetchItemFromFirestore,
-} from "./firestoreSync";
-import { debounce } from "lodash";
-
-// Define checkedKeys here
-const checkedKeys = new Set<string>();
-
-// Prefix to identify encrypted data
-const OLD_ENCRYPTION_PREFIX = "enc:";
-const NEW_ENCRYPTION_PREFIX = "aes:";
-
-// Debounce the sync function to avoid excessive Firestore writes
-const debouncedSync = debounce(syncItemToFirestore, 2000);
+  old_readAndDecryptFromAsyncStorage,
+  removeOldAsyncStorageItem,
+} from "./migrationUtils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Get item from storage, decrypting it
+ * Get item from secure storage.
  */
 export async function getSecureItem<T>(key: string): Promise<T | null> {
   try {
-    // 1. Check local storage first
-    const localData = await AsyncStorage.getItem(key);
+    const jsonString = await SecureStore.getItemAsync(key, {
+      requireAuthentication: false,
+    });
 
-    if (localData) {
-      // Data found locally, process it
-      if (localData.startsWith(NEW_ENCRYPTION_PREFIX)) {
-        const encryptedData = localData.substring(NEW_ENCRYPTION_PREFIX.length);
-        return await decryptData(encryptedData);
-      } else if (localData.startsWith(OLD_ENCRYPTION_PREFIX)) {
-        console.log(`Found legacy encrypted data for ${key}, migrating...`);
-        // Handle migration or return null/error as appropriate
-        // For now, let's assume migration means setting it securely and returning null for this read
-        // Or perhaps better, attempt decryption if possible, or just clear it
-        await removeSecureItem(key); // Remove old format
-        return null; // Indicate data needs re-setting or is gone
-      } else {
-        // Unencrypted legacy data - migrate it
-        console.log(`Migrating unencrypted ${key} to secure storage...`);
-        let parsedData;
-        try {
-          parsedData = JSON.parse(localData);
-        } catch {
-          parsedData = localData; // Treat as string if not JSON
-        }
-        // Encrypt and save, which also triggers Firestore sync
-        await setSecureItem(key, parsedData);
-        // Return the data we just migrated
-        return parsedData;
+    if (jsonString) {
+      try {
+        return JSON.parse(jsonString) as T;
+      } catch (e) {
+        console.error(`Error parsing JSON for key ${key}:`, e);
+        await SecureStore.deleteItemAsync(key);
+        return null;
       }
-    } else {
-      // 2. No local data found. Check Firestore only if not recently checked.
-      // This prevents fetching from Firestore if we just deleted the item locally.
-      if (!checkedKeys.has(key)) {
-        const firestoreResult = await fetchItemFromFirestore(key);
-        checkedKeys.add(key); // Mark as checked for this session
-
-        if (firestoreResult) {
-          // Data found in Firestore, update local storage and return decrypted data
-          console.log(`Updating local data for ${key} from Firestore.`);
-          const prefixedData = `${NEW_ENCRYPTION_PREFIX}${firestoreResult.data}`;
-          await AsyncStorage.setItem(key, prefixedData);
-          // Decrypt the data fetched from Firestore before returning
-          return await decryptData(firestoreResult.data);
-        }
-      }
-      // No local data and either no Firestore data or already checked Firestore this session
-      return null;
     }
+    return null;
   } catch (error) {
     console.error(`Error getting secure item for key ${key}:`, error);
     return null;
@@ -76,80 +31,124 @@ export async function getSecureItem<T>(key: string): Promise<T | null> {
 }
 
 /**
- * Set item in storage, encrypting it
+ * Set item in secure storage.
  */
 export async function setSecureItem(key: string, data: any): Promise<void> {
   try {
-    const encryptedData = await encryptData(data);
+    // Ensure data is not null/undefined before stringifying
+    if (data === null || typeof data === undefined) {
+      console.warn(
+        `Attempted to store null/undefined for key ${key}. Removing item instead.`
+      );
+      await removeSecureItem(key);
+      return;
+    }
 
-    // Add prefix to identify as encrypted data
-    const prefixedData = `${NEW_ENCRYPTION_PREFIX}${encryptedData}`;
-    await AsyncStorage.setItem(key, prefixedData);
-
-    // Trigger debounced sync to Firestore
-    debouncedSync(key, encryptedData);
+    const jsonString = JSON.stringify(data);
+    await SecureStore.setItemAsync(key, jsonString, {
+      requireAuthentication: false,
+    });
   } catch (error) {
     console.error(`Error setting secure item for key ${key}:`, error);
-    throw new Error("Failed to store encrypted data");
+    throw new Error("Failed to store secure data");
   }
 }
 
 /**
- * Remove item from storage
+ * Remove item from secure storage.
  */
 export async function removeSecureItem(key: string): Promise<void> {
   try {
-    await AsyncStorage.removeItem(key);
-    debouncedSync(key, ""); // Pass empty string instead of null to indicate deletion
+    await SecureStore.deleteItemAsync(key, {});
   } catch (error) {
     console.error(`Error removing secure item for key ${key}:`, error);
   }
 }
 
-/**
- * Migration function to encrypt existing data
- */
-export async function migrateToEncryption(): Promise<void> {
-  try {
-    console.log("Starting data migration to encrypted storage...");
+const MIGRATION_FLAG_KEY = "migration_to_securestore_v1_complete";
 
-    // List of keys to encrypt
-    const keysToEncrypt = [
-      "journal_entries",
+/**
+ * Performs a one-time migration from old AsyncStorage+custom encryption
+ * to the new SecureStore-based storage.
+ */
+export async function runDataMigrationIfNeeded(): Promise<void> {
+  try {
+    // Check if migration was already completed using the new SecureStore flag
+    const migrationComplete = await SecureStore.getItemAsync(
+      MIGRATION_FLAG_KEY
+    );
+    if (migrationComplete === "true") {
+      return;
+    }
+
+    console.log("Starting data migration check...");
+
+    const keysToMigrate = [
       "mood_entries",
       "meditation_sessions",
       "favorite_meditations",
-      "breathing_sessions",
-      "total_breathing_time",
+      "journal_entries",
+      "last_breathing_technique",
+      "meditation_reminder_time",
+      "journal_reminder_time",
+      "mood_reminder_time",
+      "personalized_reminder_time",
+      "recommendation_analytics",
+      "theme_preference",
     ];
 
-    for (const key of keysToEncrypt) {
-      // Get data
-      const data = await AsyncStorage.getItem(key);
-
-      if (
-        data &&
-        !data.startsWith(OLD_ENCRYPTION_PREFIX) &&
-        !data.startsWith(NEW_ENCRYPTION_PREFIX)
-      ) {
-        console.log(`Migrating ${key} to encrypted storage...`);
-
-        // Parse if JSON
-        let parsedData;
-        try {
-          parsedData = JSON.parse(data);
-        } catch {
-          parsedData = data;
-        }
-
-        // Encrypt and store
-        await setSecureItem(key, parsedData);
-        console.log(`Successfully migrated ${key}`);
+    let migrationNeeded = false;
+    // Check if any old data actually exists before logging start message
+    for (const key of keysToMigrate) {
+      const oldDataExists = await AsyncStorage.getItem(key);
+      if (oldDataExists !== null) {
+        migrationNeeded = true;
+        break;
       }
     }
 
-    console.log("Data migration completed successfully");
+    if (!migrationNeeded) {
+      console.log("No old data found in AsyncStorage. Migration not needed.");
+      // Set the flag anyway to prevent future checks
+      await SecureStore.setItemAsync(MIGRATION_FLAG_KEY, "true");
+      return;
+    }
+
+    console.log("Old data found. Starting data migration to SecureStore...");
+    let migrationSuccess = true;
+
+    for (const key of keysToMigrate) {
+      try {
+        const oldData = await old_readAndDecryptFromAsyncStorage<any>(key);
+
+        if (oldData !== null) {
+          await setSecureItem(key, oldData);
+          console.log(`Successfully migrated data for key: ${key}`);
+          await removeOldAsyncStorageItem(key);
+        } else {
+          const checkAgain = await AsyncStorage.getItem(key);
+          if (checkAgain !== null) {
+            console.warn(
+              `Data read as null/failed decryption for key ${key}, but removing from AsyncStorage.`
+            );
+            await removeOldAsyncStorageItem(key);
+          }
+        }
+      } catch (error) {
+        console.error(`Error migrating key ${key}:`, error);
+        migrationSuccess = false;
+      }
+    }
+
+    if (migrationSuccess) {
+      await SecureStore.setItemAsync(MIGRATION_FLAG_KEY, "true");
+      console.log("Data migration completed successfully.");
+    } else {
+      console.error(
+        "Data migration finished with errors for one or more keys. Flag not set. Please check logs."
+      );
+    }
   } catch (error) {
-    console.error("Error during migration:", error);
+    console.error("Critical error during migration process:", error);
   }
 }

@@ -16,6 +16,7 @@ import {
   PanResponder,
   GestureResponderEvent,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Audio, AVPlaybackStatus } from "expo-av";
@@ -124,16 +125,20 @@ export default function MeditationPlayerScreen() {
     }
   }
 
-  // Audio cleanup function (used in multiple places)
+  // Audio cleanup function
   const cleanupAudio = async (soundToCleanup: Audio.Sound) => {
+    console.log("Attempting audio cleanup...");
     try {
       stopTimer();
 
       const status = await soundToCleanup.getStatusAsync();
       if (status.isLoaded) {
+        console.log("Sound is loaded, stopping and unloading...");
         await soundToCleanup.stopAsync();
         await soundToCleanup.unloadAsync();
         console.log("Audio cleaned up successfully.");
+      } else {
+        console.log("Sound was already unloaded or in an error state.");
       }
     } catch (error) {
       console.error("Error during audio cleanup:", error);
@@ -147,6 +152,11 @@ export default function MeditationPlayerScreen() {
     const meditation = meditationsData[meditationId];
 
     if (!meditation) {
+      console.error(`Meditation data not found for ID: ${meditationId}`);
+      Alert.alert(
+        "Error",
+        "Could not find meditation data. Please go back and try again."
+      );
       setIsAudioLoading(false);
       return null;
     }
@@ -156,17 +166,21 @@ export default function MeditationPlayerScreen() {
       meditation.audio || require("../../assets/audio/calm.mp3");
 
     try {
+      console.log(`Initializing audio for meditation ID: ${meditationId}`);
       const { sound } = await Audio.Sound.createAsync(selectedAudio, {
         shouldPlay: false,
         progressUpdateIntervalMillis: 100,
       });
 
       const status = await sound.getStatusAsync();
-      if (status.isLoaded) {
-        const actualDuration = status.durationMillis
-          ? Math.ceil(status.durationMillis / 1000)
-          : meditation.duration;
+      if (status.isLoaded && status.durationMillis) {
+        const actualDuration = Math.ceil(status.durationMillis / 1000);
+        console.log(`Actual audio duration: ${actualDuration}s`);
         setDuration(actualDuration);
+      } else if (status.isLoaded) {
+        console.warn("Audio loaded but durationMillis is not available.");
+      } else {
+        console.warn("Audio status could not be read after loading.");
       }
 
       await Audio.setAudioModeAsync({
@@ -177,9 +191,17 @@ export default function MeditationPlayerScreen() {
       sound.setOnPlaybackStatusUpdate(updatePlaybackStatus);
       setSound(sound);
       setIsAudioLoading(false);
+      console.log("Audio initialized successfully.");
       return sound;
     } catch (error) {
+      console.error("Error initializing audio:", error);
+      setSound(null);
       setIsAudioLoading(false);
+
+      Alert.alert(
+        "Audio Error",
+        "Could not load the meditation audio. Please check your connection or try again later."
+      );
       return null;
     }
   }
@@ -188,50 +210,131 @@ export default function MeditationPlayerScreen() {
   async function loadAudio() {
     if (sound) {
       try {
+        console.log("Attempting to play existing sound object.");
         startTimeRef.current = Date.now();
         await sound.playAsync();
         setIsPlaying(true);
         startTimer();
+        console.log("Playback started successfully.");
       } catch (error) {
-        // If playback fails, reinitialize
-        initializeAudio().then((newSound) => {
-          if (newSound) {
-            newSound.playAsync();
-            setIsPlaying(true);
-            startTimer();
-          }
-        });
+        console.error(
+          "Error playing existing sound, attempting reinitialization:",
+          error
+        );
+        setIsAudioLoading(true);
+        setIsPlaying(false);
+        stopTimer();
+
+        initializeAudio()
+          .then(async (newSound) => {
+            if (newSound) {
+              try {
+                console.log("Reinitialized sound, attempting playback.");
+                startTimeRef.current = Date.now();
+                await newSound.playAsync();
+                setIsPlaying(true);
+                startTimer();
+                console.log("Playback started after reinitialization.");
+              } catch (playError) {
+                console.error(
+                  "Error playing sound after reinitialization:",
+                  playError
+                );
+                setIsPlaying(false);
+                stopTimer();
+                Alert.alert(
+                  "Playback Error",
+                  "Could not start playback even after reloading. Please try again."
+                );
+              }
+            } else {
+              console.log("Reinitialization failed, cannot play audio.");
+              setIsPlaying(false);
+            }
+          })
+          .finally(() => {
+            setIsAudioLoading(false);
+          });
       }
     } else {
+      console.log("Sound object is null, initializing audio first.");
+      setIsAudioLoading(true);
+      setIsPlaying(false);
+      stopTimer();
+
       const newSound = await initializeAudio();
       if (newSound) {
-        startTimeRef.current = Date.now();
-        await newSound.playAsync();
-        setIsPlaying(true);
-        startTimer();
+        try {
+          console.log("Initialized new sound, attempting playback.");
+          startTimeRef.current = Date.now();
+          await newSound.playAsync();
+          setIsPlaying(true);
+          startTimer();
+          console.log("Playback started with new sound.");
+        } catch (playError) {
+          console.error("Error playing newly initialized sound:", playError);
+          setIsPlaying(false);
+          stopTimer();
+          Alert.alert(
+            "Playback Error",
+            "Could not start playback. Please try again."
+          );
+        }
+      } else {
+        console.log("Initialization failed, cannot play audio.");
+        setIsPlaying(false);
       }
+      setIsAudioLoading(false);
     }
   }
 
   async function handlePlayPause() {
     if (!sound) {
+      console.log("Play pressed, but sound not loaded. Calling loadAudio.");
       await loadAudio();
     } else {
       if (isPlaying) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
-        stopTimer();
+        try {
+          console.log("Pausing audio.");
+          await sound.pauseAsync();
+          setIsPlaying(false);
+          stopTimer();
+          console.log("Audio paused.");
+        } catch (error) {
+          console.error("Error pausing audio:", error);
+        }
       } else {
-        startTimeRef.current = Date.now() - timeElapsed * 1000;
-        await sound.playAsync();
-        setIsPlaying(true);
-        startTimer();
+        try {
+          console.log("Resuming audio playback.");
+          startTimeRef.current = Date.now() - timeElapsed * 1000;
+          await sound.playAsync();
+          setIsPlaying(true);
+          startTimer();
+          console.log("Audio resumed");
+        } catch (error) {
+          console.error("Error resuming audio playback:", error);
+          setIsPlaying(false);
+          stopTimer();
+          Alert.alert(
+            "Playback Error",
+            "Could not resume playback. Please try again."
+          );
+        }
       }
     }
   }
 
   const seekToPosition = async (position: number) => {
-    if (!sound) return;
+    if (!sound) {
+      console.warn("Seek attempted but sound is not loaded.");
+      return;
+    }
+
+    // Prevent seeking if duration is unknown
+    if (duration <= 0) {
+      console.warn("Seek attempted but duration is unknown or zero.");
+      return;
+    }
 
     try {
       setIsSeekingAudio(true);
@@ -240,18 +343,26 @@ export default function MeditationPlayerScreen() {
         Math.min(Math.floor(position), duration)
       );
 
-      // Update UI first for responsive feel
+      console.log(`Seeking to position: ${seekPosition}s`);
+
+      // Update UI immediately for responsiveness
       setTimeElapsed(seekPosition);
 
       await sound.setPositionAsync(seekPosition * 1000);
 
-      // Verify the position
+      // Verify the position after seeking
       const status = await sound.getStatusAsync();
       if (status.isLoaded) {
-        setTimeElapsed(Math.floor(status.positionMillis / 1000));
+        const actualPosition = Math.floor(status.positionMillis / 1000);
+        setTimeElapsed(actualPosition);
+        console.log(`Seek completed, actual position: ${actualPosition}s`);
+      } else {
+        console.warn(
+          "Could not verify position after seek, status not loaded."
+        );
       }
 
-      // Update time reference
+      // Update the reference start time for the timer
       startTimeRef.current = Date.now() - seekPosition * 1000;
 
       if (isPlaying) {
@@ -259,6 +370,7 @@ export default function MeditationPlayerScreen() {
         startTimer();
       }
     } catch (error) {
+      console.error("Error during seek operation:", error);
       // Silent failure
     } finally {
       setIsSeekingAudio(false);
@@ -362,19 +474,22 @@ export default function MeditationPlayerScreen() {
         "meditation_sessions"
       );
 
-      // Check if sessions is an array before using array methods
-      if (!Array.isArray(sessions)) {
-        console.warn("'meditation_sessions' was not an array, initializing.");
-        // If it's not an array, initialize as empty array with the new session
-        await setSecureItem("meditation_sessions", [session]);
-      } else {
-        // Add the new session and save
-        sessions.push(session);
-        await setSecureItem("meditation_sessions", sessions);
+      // Ensure sessions is an array
+      if (!sessions || !Array.isArray(sessions)) {
+        console.warn(
+          "'meditation_sessions' was not an array or was null, initializing."
+        );
+        sessions = [];
       }
+
+      // Add the new session and save
+      await setSecureItem("meditation_sessions", [...sessions, session]);
     } catch (error) {
       console.error("Failed to save meditation session:", error);
-      // Silent failure in UI
+      Alert.alert(
+        "Save Failed",
+        "Unfortunately, your meditation session could not be saved. Please try again later if needed."
+      );
     }
   }
 
@@ -438,6 +553,8 @@ export default function MeditationPlayerScreen() {
       const favorites = await getSecureItem<string[]>("favorite_meditations");
       if (favorites && Array.isArray(favorites)) {
         setIsFavorite(favorites.includes(String(id)));
+      } else {
+        setIsFavorite(false);
       }
     } catch (error) {
       console.error("Failed to check favorite status:", error);
@@ -446,26 +563,34 @@ export default function MeditationPlayerScreen() {
   };
 
   async function toggleFavorite() {
-    try {
-      const favorites =
-        (await getSecureItem<string[]>("favorite_meditations")) || [];
+    const currentId = String(id);
 
-      const favoritesArray = Array.isArray(favorites) ? favorites : [];
+    try {
+      let favorites = await getSecureItem<string[]>("favorite_meditations");
+      if (!Array.isArray(favorites)) {
+        favorites = [];
+      }
 
       let updatedFavorites;
-      if (isFavorite) {
-        updatedFavorites = favorites.filter((favId: string) => favId !== id);
+      const currentlyIsFavorite = favorites.includes(currentId);
+
+      if (currentlyIsFavorite) {
+        updatedFavorites = favorites.filter((favId) => favId !== currentId);
       } else {
         // Add to favorites
-        updatedFavorites = [...favoritesArray, String(id)];
+        updatedFavorites = [...favorites, currentId];
       }
 
       // Save updated favorites with secure storage
       await setSecureItem("favorite_meditations", updatedFavorites);
-      setIsFavorite(!isFavorite);
+
+      setIsFavorite(!currentlyIsFavorite);
     } catch (error) {
       console.error("Failed to update favorites:", error);
-      // Silent failure
+      Alert.alert(
+        "Update Failed",
+        "Could not update your favorites at this time. Please try again."
+      );
     }
   }
 

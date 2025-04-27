@@ -5,7 +5,7 @@ export const meditationsData: { [key: string]: Meditation } = {
   "1": {
     id: "1",
     title: "Calm Mind",
-    description: "Reduce anxiety and find peace",
+    description: "Music to reduce anxiety and find peace",
     audio: require("../assets/audio/calm.mp3"),
     duration: 205,
     category: ["calm", "peaceful", "happy"],
@@ -13,7 +13,7 @@ export const meditationsData: { [key: string]: Meditation } = {
   "2": {
     id: "2",
     title: "Relaxing Breath",
-    description: "Slow breathing for relaxation",
+    description: "Soothing sounds for relaxation",
     audio: require("../assets/audio/relaxing_breath.mp3"),
     duration: 208,
     category: ["happy", "relaxing", "ambient"],
@@ -21,7 +21,7 @@ export const meditationsData: { [key: string]: Meditation } = {
   "3": {
     id: "3",
     title: "Gentle Sleep",
-    description: "Prepare your mind for restful sleep",
+    description: "Calming audio to prepare for restful sleep",
     audio: require("../assets/audio/gentle_sleep.mp3"),
     duration: 211,
     category: ["sleep", "ambient", "happy"],

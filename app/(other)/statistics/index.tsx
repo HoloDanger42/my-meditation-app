@@ -538,7 +538,7 @@ export default function StatisticsScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Meditation Time (Last 7 Days)</Text>
+            <Text style={styles.cardTitle}>Listening Time (Last 7 Days)</Text>
             {meditationBarChartData.length > 0 ? (
               <View style={styles.chartContainer}>
                 <BarChart
@@ -583,7 +583,7 @@ export default function StatisticsScreen() {
                 />
               </View>
             ) : (
-              <Text style={styles.emptyText}>No meditation data available</Text>
+              <Text style={styles.emptyText}>No listening data available</Text>
             )}
             <Text
               style={[
@@ -591,7 +591,7 @@ export default function StatisticsScreen() {
                 { marginTop: 10, textAlign: "center" },
               ]}
             >
-              Minutes of meditation per day
+              Minutes of listening per day
             </Text>
           </View>
 
@@ -608,14 +608,14 @@ export default function StatisticsScreen() {
               {getJournalEntriesThisWeek(journalData)}
             </Text>
             <Text style={styles.insightText}>
-              • Total meditation sessions: {meditationSessions.length}
+              • Total listening sessions: {meditationSessions.length}
             </Text>
             <Text style={styles.insightText}>
               • Average session rating:{" "}
               {averageRating > 0 ? averageRating : "No ratings"}
             </Text>
             <Text style={styles.insightText}>
-              • Total minutes meditated:{" "}
+              • Total minutes listened:{" "}
               {Math.round(
                 meditationSessions.reduce((sum, s) => sum + s.duration, 0) / 60
               )}

@@ -5,11 +5,11 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import { migrateToEncryption } from "../utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { performInitialSync } from "../utils/firestoreSync";
 import * as SplashScreen from "expo-splash-screen";
 import initializeFirebase from "../utils/firebaseInit";
+import { runDataMigrationIfNeeded } from "@/utils/secureStorage";
 
 // Initialize Firebase as early as possible
 initializeFirebase();
@@ -110,7 +110,8 @@ function RootNavigation() {
     async function prepareApp() {
       let isFirstLaunch = false;
       try {
-        await migrateToEncryption();
+        await runDataMigrationIfNeeded();
+        console.log("Migration check complete.");
 
         const hasLaunched = await AsyncStorage.getItem("hasLaunched");
         if (hasLaunched === null) {

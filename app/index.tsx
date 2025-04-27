@@ -404,7 +404,7 @@ export default function HomeScreen() {
         {recommendations.recommendedMeditations?.length > 0 && (
           <View style={styles.recommendationsSection}>
             <Text style={styles.recommendationsSectionTitle}>
-              Recommended Meditations
+              Recommended Music Tracks
             </Text>
             {/* Use the correct Meditation type */}
             {recommendations.recommendedMeditations.map(

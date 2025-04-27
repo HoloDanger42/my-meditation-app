@@ -259,7 +259,7 @@ export default function MeditationListScreen() {
     <View style={styles.container}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
-        <Text style={styles.title}>Meditations</Text>
+        <Text style={styles.title}>Meditation Music</Text>
       </View>
 
       <FlatList
