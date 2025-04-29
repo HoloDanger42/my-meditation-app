@@ -6,15 +6,28 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "GOOGLE_SERVICES_JSON": "{{secrets.GOOGLE_SERVICES_JSON}}"
+      },
+      "prebuildCommand": "echo \"$GOOGLE_SERVICES_JSON\" > android/app/google-services.json"
     },
     "preview": {
       "distribution": "internal",
-      "android" : {
-        "buildType": "apk" 
-      }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "GOOGLE_SERVICES_JSON": "{{secrets.GOOGLE_SERVICES_JSON}}"
+      },
+      "prebuildCommand": "echo \"$GOOGLE_SERVICES_JSON\" > android/app/google-services.json"
     },
-    "production": {}
+    "production": {
+      "env": {
+        "GOOGLE_SERVICES_JSON": "{{secrets.GOOGLE_SERVICES_JSON}}"
+      },
+      "prebuildCommand": "echo \"$GOOGLE_SERVICES_JSON\" > android/app/google-services.json"
+    }
   },
   "submit": {
     "production": {}
