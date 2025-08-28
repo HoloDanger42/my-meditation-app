@@ -1,6 +1,12 @@
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
-import { getSecureItem, setSecureItem, registerSyncProvider } from "./secureStorage";
+import {
+  getSecureItem,
+  setSecureItem,
+  registerSyncProvider,
+  onAuthenticated,
+  getAuthenticationState,
+} from "./secureStorage";
 import { SyncInterface } from "./storageInterfaces";
 import * as Crypto from "expo-crypto";
 import { encode as encodeBase64, decode as decodeBase64 } from "base-64";
@@ -26,45 +32,53 @@ async function encryptForFirestore(data: any): Promise<string> {
   try {
     // Convert data to JSON string
     const jsonString = JSON.stringify(data);
-    
+
     // Get user UID as encryption key basis (ensures each user's data has unique encryption)
     const user = auth().currentUser;
     if (!user?.uid) {
       throw new Error("No user ID available for encryption");
     }
-    
+
     // Create a hash of the user's UID to use as encryption key
     const keyHex = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       user.uid + "MEDITATION_APP_SECRET_SALT" // Add app-specific salt
     );
-    
+
     // Generate a random IV for each encryption (16 bytes for AES)
     const randomBytes = await Crypto.getRandomBytesAsync(16);
     const ivHex = Array.from(randomBytes)
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    
+
     // Use salt for key derivation (can be fixed since we already use a unique key per user)
     const salt = "MeditationAppStaticSalt";
-    
+
     // If in Expo Go, directly use simple encryption to avoid unsupported methods
     if (isExpoGo) {
       return simpleEncrypt(jsonString, keyHex);
     }
-    
+
     try {
       // Platform-specific encryption
       if (Platform.OS !== "web") {
         // Use native AES encryption
-        const encrypted = await encryptWithAesNative(jsonString, keyHex, ivHex, salt);
+        const encrypted = await encryptWithAesNative(
+          jsonString,
+          keyHex,
+          ivHex,
+          salt
+        );
         return `${ENCRYPTION_PREFIX}${ivHex}:${encrypted}`;
       } else {
         // For web platform (though this is unlikely in your React Native app)
         throw new Error("Web platform not supported directly");
       }
     } catch (specificError) {
-      console.warn("AES encryption failed, falling back to simple encryption", specificError);
+      console.warn(
+        "AES encryption failed, falling back to simple encryption",
+        specificError
+      );
       return simpleEncrypt(jsonString, keyHex);
     }
   } catch (error) {
@@ -139,18 +153,20 @@ async function decryptWithAesNative(
 async function decryptFromFirestore(encryptedString: string): Promise<any> {
   try {
     // If it's not encrypted (no known prefix), return as is
-    if (!encryptedString.startsWith(ENCRYPTION_PREFIX) && 
-        !encryptedString.startsWith(SIMPLE_PREFIX) && 
-        !encryptedString.startsWith(PLAIN_PREFIX)) {
+    if (
+      !encryptedString.startsWith(ENCRYPTION_PREFIX) &&
+      !encryptedString.startsWith(SIMPLE_PREFIX) &&
+      !encryptedString.startsWith(PLAIN_PREFIX)
+    ) {
       // Try to parse it as JSON first
       try {
         return JSON.parse(encryptedString);
       } catch (e) {
         // If not valid JSON, return as string
-        return encryptedString; 
+        return encryptedString;
       }
     }
-    
+
     // Handle plaintext fallback
     if (encryptedString.startsWith(PLAIN_PREFIX)) {
       const plainData = encryptedString.substring(PLAIN_PREFIX.length);
@@ -160,22 +176,22 @@ async function decryptFromFirestore(encryptedString: string): Promise<any> {
         return plainData;
       }
     }
-    
+
     // Get user UID for decryption key
     const user = auth().currentUser;
     if (!user?.uid) {
       throw new Error("No user ID available for decryption");
     }
-    
+
     // Create the same hash of the user's UID
     const keyHex = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       user.uid + "MEDITATION_APP_SECRET_SALT"
     );
-    
+
     // Fixed salt for key derivation (same as encryption)
     const salt = "MeditationAppStaticSalt";
-    
+
     // Handle simple encryption format
     if (encryptedString.startsWith(SIMPLE_PREFIX)) {
       const decryptedString = await simpleDecrypt(encryptedString, keyHex);
@@ -185,23 +201,28 @@ async function decryptFromFirestore(encryptedString: string): Promise<any> {
         return decryptedString;
       }
     }
-    
+
     // Handle AES encryption format
     if (encryptedString.startsWith(ENCRYPTION_PREFIX)) {
       try {
         // Remove prefix
         const data = encryptedString.substring(ENCRYPTION_PREFIX.length);
-        
+
         // Split IV and encrypted data
-        const [ivHex, encryptedData] = data.split(':');
-        
+        const [ivHex, encryptedData] = data.split(":");
+
         if (!ivHex || !encryptedData) {
           throw new Error("Invalid encrypted data format");
         }
-        
+
         // Use native decryption
         if (Platform.OS !== "web") {
-          const decryptedString = await decryptWithAesNative(encryptedData, keyHex, ivHex, salt);
+          const decryptedString = await decryptWithAesNative(
+            encryptedData,
+            keyHex,
+            ivHex,
+            salt
+          );
           try {
             return JSON.parse(decryptedString);
           } catch {
@@ -211,9 +232,12 @@ async function decryptFromFirestore(encryptedString: string): Promise<any> {
           throw new Error("Web platform not supported directly");
         }
       } catch (error) {
-        console.warn("AES decryption failed, attempting simple decrypt as fallback", error);
+        console.warn(
+          "AES decryption failed, attempting simple decrypt as fallback",
+          error
+        );
         // Try simple decrypt as a fallback
-        return simpleDecrypt(encryptedString, keyHex).then(str => {
+        return simpleDecrypt(encryptedString, keyHex).then((str) => {
           try {
             return JSON.parse(str);
           } catch {
@@ -222,7 +246,7 @@ async function decryptFromFirestore(encryptedString: string): Promise<any> {
         });
       }
     }
-    
+
     throw new Error("Unknown encryption format");
   } catch (error) {
     console.error("Decryption from Firestore failed:", error);
@@ -235,16 +259,19 @@ async function decryptFromFirestore(encryptedString: string): Promise<any> {
 function simpleEncrypt(text: string, key: string): string {
   try {
     // Create a simple key from the hash
-    const simpleKey = key.split("").map(c => c.charCodeAt(0));
+    const simpleKey = key.split("").map((c) => c.charCodeAt(0));
     const keyLength = simpleKey.length;
-    
+
     // XOR each character with the key
-    const result = text.split("").map((char, index) => {
-      const charCode = char.charCodeAt(0);
-      const keyChar = simpleKey[index % keyLength];
-      return String.fromCharCode(charCode ^ keyChar);
-    }).join("");
-    
+    const result = text
+      .split("")
+      .map((char, index) => {
+        const charCode = char.charCodeAt(0);
+        const keyChar = simpleKey[index % keyLength];
+        return String.fromCharCode(charCode ^ keyChar);
+      })
+      .join("");
+
     // Return as base64 to ensure it's transportable
     return `${SIMPLE_PREFIX}${encodeBase64(result)}`;
   } catch (e) {
@@ -254,27 +281,33 @@ function simpleEncrypt(text: string, key: string): string {
 }
 
 // Simple XOR decryption as a fallback
-async function simpleDecrypt(encryptedText: string, key: string): Promise<string> {
+async function simpleDecrypt(
+  encryptedText: string,
+  key: string
+): Promise<string> {
   try {
     // Remove prefix
     if (encryptedText.startsWith(SIMPLE_PREFIX)) {
       encryptedText = encryptedText.substring(SIMPLE_PREFIX.length);
     }
-    
+
     // Decode from base64
     const decoded = decodeBase64(encryptedText);
-    
+
     // Create a simple key from the hash
-    const simpleKey = key.split("").map(c => c.charCodeAt(0));
+    const simpleKey = key.split("").map((c) => c.charCodeAt(0));
     const keyLength = simpleKey.length;
-    
+
     // XOR each character with the key (XOR is reversible)
-    const result = decoded.split("").map((char, index) => {
-      const charCode = char.charCodeAt(0);
-      const keyChar = simpleKey[index % keyLength];
-      return String.fromCharCode(charCode ^ keyChar);
-    }).join("");
-    
+    const result = decoded
+      .split("")
+      .map((char, index) => {
+        const charCode = char.charCodeAt(0);
+        const keyChar = simpleKey[index % keyLength];
+        return String.fromCharCode(charCode ^ keyChar);
+      })
+      .join("");
+
     return result;
   } catch (e) {
     console.error("Simple decryption failed:", e);
@@ -324,7 +357,7 @@ export async function syncObjectToFirestore(
       await userDocRef.update(updateData);
     } catch (updateError: any) {
       // If document doesn't exist, fall back to set with merge
-      if (updateError.code === 'firestore/not-found') {
+      if (updateError.code === "firestore/not-found") {
         // Don't try to set FieldValue.delete() in a new document
         if (data !== null && data !== undefined) {
           const setData = {
@@ -333,7 +366,9 @@ export async function syncObjectToFirestore(
             lastUpdated: firestore.FieldValue.serverTimestamp(),
           };
           await userDocRef.set(setData, { merge: true });
-          console.log(`Created new document for user ${user.uid} with encrypted ${key}`);
+          console.log(
+            `Created new document for user ${user.uid} with encrypted ${key}`
+          );
         }
       } else {
         throw updateError; // Re-throw if it's a different error
@@ -376,7 +411,7 @@ export async function syncItemToFirestore(
 const firestoreSyncProvider: SyncInterface = {
   syncItem: async (key: string, data: any): Promise<void> => {
     return syncObjectToFirestore(key, data);
-  }
+  },
 };
 
 // Register this provider with secureStorage
@@ -404,15 +439,19 @@ export async function fetchItemFromFirestore(
       const encryptedValue = data?.[key]; // Get the encrypted value
       const timestampValue = data?.[`${key}_lastUpdated`];
 
-      if (encryptedValue !== undefined && timestampValue && timestampValue.toDate) {
+      if (
+        encryptedValue !== undefined &&
+        timestampValue &&
+        timestampValue.toDate
+      ) {
         const timestamp = timestampValue.toDate();
-        
+
         // Decrypt the data if it's a string (encrypted)
-        if (typeof encryptedValue === 'string') {
+        if (typeof encryptedValue === "string") {
           const decryptedValue = await decryptFromFirestore(encryptedValue);
           return { data: decryptedValue, timestamp };
         }
-        
+
         // If it's not a string, return as is (might be a FieldValue.delete())
         return { data: encryptedValue, timestamp };
       }
@@ -461,27 +500,30 @@ export async function fetchAllUserDataFromFirestore(
     if (docSnapshot.exists) {
       const allData = docSnapshot.data();
       const userData: Record<string, any> = {};
-      
+
       if (allData) {
         const decryptionPromises: Promise<void>[] = [];
-        
+
         for (const key in allData) {
           // Skip timestamp fields
           if (!key.endsWith("_lastUpdated") && key !== "lastUpdated") {
             const value = allData[key];
-            
+
             // If it's a string, it might be encrypted
-            if (typeof value === 'string') {
+            if (typeof value === "string") {
               // Create a promise for each decryption task
               const decryptPromise = (async () => {
                 try {
                   userData[key] = await decryptFromFirestore(value);
                 } catch (error) {
-                  console.error(`Failed to decrypt ${key}, storing encrypted:`, error);
+                  console.error(
+                    `Failed to decrypt ${key}, storing encrypted:`,
+                    error
+                  );
                   userData[key] = value; // Store as is if decryption fails
                 }
               })();
-              
+
               decryptionPromises.push(decryptPromise);
             } else {
               // If it's not a string, store as is
@@ -489,7 +531,7 @@ export async function fetchAllUserDataFromFirestore(
             }
           }
         }
-        
+
         // Wait for all decryption operations to complete
         await Promise.all(decryptionPromises);
       }
@@ -521,8 +563,28 @@ const checkedKeys = new Set<string>();
 /**
  * Performs an initial sync, fetching all data from Firestore and updating local storage.
  */
-export async function performInitialSync(): Promise<void> {
-  console.log("Performing initial sync from Firestore...");
+export function performInitialSync(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Check if already authenticated. If so, run immediately.
+    if (getAuthenticationState()) {
+      console.log("Already authenticated, performing initial sync...");
+      runSync().then(resolve).catch(reject);
+      return;
+    }
+
+    // Otherwise, wait for authentication.
+    console.log("Waiting for authentication to perform initial sync...");
+    onAuthenticated(() => {
+      console.log("Authentication successful, performing initial sync...");
+      runSync().then(resolve).catch(reject);
+    });
+  });
+}
+
+/**
+ * The core logic for the sync process.
+ */
+async function runSync(): Promise<void> {
   const allFirestoreData = await fetchAllUserDataFromFirestore();
 
   if (!allFirestoreData) {
@@ -530,16 +592,18 @@ export async function performInitialSync(): Promise<void> {
     return;
   }
 
-  for (const key in allFirestoreData) {
+  const syncPromises = Object.keys(allFirestoreData).map(async (key) => {
     try {
-      const firestoreData = allFirestoreData[key]; // This is the actual object/array
-      
+      const firestoreData = allFirestoreData[key];
+
       // Get current local data using getSecureItem
       const localData = await getSecureItem<any>(key);
 
       // Compare using stringification (simple deep comparison)
-      const localStringData = localData !== null ? JSON.stringify(localData) : null;
-      const firestoreStringData = firestoreData !== null ? JSON.stringify(firestoreData) : null;
+      const localStringData =
+        localData !== null ? JSON.stringify(localData) : null;
+      const firestoreStringData =
+        firestoreData !== null ? JSON.stringify(firestoreData) : null;
 
       if (localStringData !== firestoreStringData) {
         console.log(
@@ -551,7 +615,9 @@ export async function performInitialSync(): Promise<void> {
     } catch (error) {
       console.error(`Error updating key ${key} during initial sync:`, error);
     }
-  }
+  });
+
+  await Promise.all(syncPromises);
 
   console.log("Initial sync completed.");
   checkedKeys.clear();

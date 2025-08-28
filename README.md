@@ -1,50 +1,70 @@
-# Welcome to your Expo app 👋
+# Zenith - Meditation & Wellness Companion
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Zenith is a mobile application built with React Native and Expo, designed to be your personal companion for meditation, stress reduction, and improved focus. It provides a suite of tools to help you track your mental well-being, build healthy habits, and find moments of calm in your daily life.
 
-## Get started
+## ✨ Features
 
-1. Install dependencies
+- **Guided Meditations**: A library of meditation sessions to help you relax and focus.
+- **Breathing Exercises**: Simple and effective breathing tools to manage stress.
+- **Mood & Journal Tracking**: Log your mood and write journal entries to reflect on your day.
+- **Personalized Statistics**: Visualize your progress with charts and stats for streaks, session time, and mood history.
+- **Secure & Private**: User data is classified by sensitivity and stored securely on your device using `expo-secure-store`. Critical data requires biometric authentication.
+- **Cloud Sync**: Optionally create an account to back up and synchronize your data across devices using Firebase.
+- **Data Export**: Users can export their data at any time.
 
-   ```bash
-   npm install
-   ```
+## 🛠️ Tech Stack
 
-2. Start the app
+- **Framework**: React Native with Expo
+- **Routing**: Expo Router (file-based)
+- **State Management**: React Context
+- **Storage**: `expo-secure-store` for on-device security and `@react-native-async-storage/async-storage` for non-sensitive data.
+- **Backend & Sync**: Firebase (Authentication & Firestore)
+- **UI & Components**: `react-native-gifted-charts` for data visualization.
+- **Language**: TypeScript
 
-   ```bash
-    npx expo start
-   ```
+## 🚀 Getting Started
 
-In the output, you'll find options to open the app in a
+### Prerequisites
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- Node.js (LTS version recommended)
+- A development environment for Android (Android Studio) or iOS (Xcode).
+- [Firebase Project](https://firebase.google.com/): You will need to set up a Firebase project to handle authentication and data synchronization.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Setup
 
-## Get a fresh project
+1.  **Clone the repository:**
 
-When you're ready, run:
+    ```bash
+    git clone
+    cd my-meditation-app
+    ```
 
-```bash
-npm run reset-project
-```
+2.  **Configure Firebase:**
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+    - Create a new Firebase project.
+    - Set up an Android app in your Firebase project with the package name `com.holodanger.mymeditationapp`.
+    - Download the `google-services.json` file and place it in the `config/` directory at the root of the project.
 
-## Learn more
+3.  **Install dependencies:**
 
-To learn more about developing your project with Expo, look at the following resources:
+    ```bash
+    npm install
+    ```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+4.  **Run the application:**
 
-## Join the community
+    - **For Android:**
+      ```bash
+      npm run android
+      ```
+    - **For iOS:**
+      ```bash
+      npm run ios
+      ```
 
-Join our community of developers creating universal apps.
+### Helpful Scripts
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Clean and Rebuild:** If you encounter build issues, this script cleans the project, reinstalls dependencies, and prepares the native projects.
+  ```bash
+  npm run reset-project
+  ```

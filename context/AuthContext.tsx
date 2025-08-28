@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { setAuthenticationState } from "../utils/secureStorage";
 
 interface AuthContextType {
   user: FirebaseAuthTypes.User | null;
@@ -21,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   function onAuthStateChanged(user: FirebaseAuthTypes.User | null) {
     console.log("Auth state changed:", user ? "User logged in" : "No user");
     setUser(user);
+    setAuthenticationState(!!user);
     if (initializing) setInitializing(false);
   }
 

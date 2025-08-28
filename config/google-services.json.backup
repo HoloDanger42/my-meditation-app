@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "593632276057",
+    "project_id": "my-meditation-app-ee2b9",
+    "storage_bucket": "my-meditation-app-ee2b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:593632276057:android:4945637e14cdcec7dccb48",
+        "android_client_info": {
+          "package_name": "com.holodanger.mymeditationapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3o5QApbfj0ARvNQjbAQjiKCMvEelQNgI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
