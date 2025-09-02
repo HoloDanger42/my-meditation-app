@@ -1,5 +1,13 @@
-import firestore from "@react-native-firebase/firestore";
-import auth from "@react-native-firebase/auth";
+import {
+  getFirestore,
+  doc as fsDoc,
+  getDoc,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+  deleteField,
+} from "@react-native-firebase/firestore";
+import { getAuth } from "@react-native-firebase/auth";
 import {
   getSecureItem,
   setSecureItem,
@@ -34,7 +42,7 @@ async function encryptForFirestore(data: any): Promise<string> {
     const jsonString = JSON.stringify(data);
 
     // Get user UID as encryption key basis (ensures each user's data has unique encryption)
-    const user = auth().currentUser;
+  const user = getAuth().currentUser;
     if (!user?.uid) {
       throw new Error("No user ID available for encryption");
     }
@@ -178,7 +186,7 @@ async function decryptFromFirestore(encryptedString: string): Promise<any> {
     }
 
     // Get user UID for decryption key
-    const user = auth().currentUser;
+  const user = getAuth().currentUser;
     if (!user?.uid) {
       throw new Error("No user ID available for decryption");
     }
@@ -324,21 +332,20 @@ export async function syncObjectToFirestore(
   key: string,
   data: any
 ): Promise<void> {
-  const user = auth().currentUser;
+  const user = getAuth().currentUser;
   if (!user) {
     console.log("Cannot sync to Firestore: No user logged in.");
     return;
   }
 
   try {
-    const userDocRef = firestore()
-      .collection(USER_DATA_COLLECTION)
-      .doc(user.uid);
+    const db = getFirestore();
+    const userDocRef = fsDoc(db, USER_DATA_COLLECTION, user.uid);
 
     // Handle data removal if null/undefined is passed
     let updateValue: any;
     if (data === null || data === undefined) {
-      updateValue = firestore.FieldValue.delete();
+      updateValue = deleteField();
       console.log(`Removing ${key} from Firestore for user ${user.uid}`);
     } else {
       // Encrypt the data before storing
@@ -348,24 +355,27 @@ export async function syncObjectToFirestore(
 
     const updateData: { [key: string]: any } = {
       [key]: updateValue,
-      [`${key}_lastUpdated`]: firestore.FieldValue.serverTimestamp(),
-      lastUpdated: firestore.FieldValue.serverTimestamp(),
+      [`${key}_lastUpdated`]: serverTimestamp(),
+      lastUpdated: serverTimestamp(),
     };
 
     // Use update to handle deletions properly
     try {
-      await userDocRef.update(updateData);
+      await updateDoc(userDocRef, updateData);
     } catch (updateError: any) {
       // If document doesn't exist, fall back to set with merge
-      if (updateError.code === "firestore/not-found") {
+      if (
+        updateError.code === "firestore/not-found" ||
+        updateError.code === "not-found"
+      ) {
         // Don't try to set FieldValue.delete() in a new document
         if (data !== null && data !== undefined) {
           const setData = {
             [key]: updateValue, // encrypted data
-            [`${key}_lastUpdated`]: firestore.FieldValue.serverTimestamp(),
-            lastUpdated: firestore.FieldValue.serverTimestamp(),
+            [`${key}_lastUpdated`]: serverTimestamp(),
+            lastUpdated: serverTimestamp(),
           };
-          await userDocRef.set(setData, { merge: true });
+          await setDoc(userDocRef, setData, { merge: true });
           console.log(
             `Created new document for user ${user.uid} with encrypted ${key}`
           );
@@ -425,16 +435,15 @@ export async function fetchItemFromFirestore(
   retries = 3,
   delayMs = 1000
 ): Promise<{ data: any; timestamp: Date } | null> {
-  const user = auth().currentUser;
+  const user = getAuth().currentUser;
   if (!user) return null;
 
   try {
-    const userDocRef = firestore()
-      .collection(USER_DATA_COLLECTION)
-      .doc(user.uid);
-    const docSnapshot = await userDocRef.get();
+    const db = getFirestore();
+    const userDocRef = fsDoc(db, USER_DATA_COLLECTION, user.uid);
+    const docSnapshot = await getDoc(userDocRef);
 
-    if (docSnapshot.exists) {
+    if (docSnapshot.exists()) {
       const data = docSnapshot.data();
       const encryptedValue = data?.[key]; // Get the encrypted value
       const timestampValue = data?.[`${key}_lastUpdated`];
@@ -488,16 +497,15 @@ export async function fetchAllUserDataFromFirestore(
   retries = 3,
   delayMs = 1000
 ): Promise<Record<string, any> | null> {
-  const user = auth().currentUser;
+  const user = getAuth().currentUser;
   if (!user) return null;
 
   try {
-    const userDocRef = firestore()
-      .collection(USER_DATA_COLLECTION)
-      .doc(user.uid);
-    const docSnapshot = await userDocRef.get();
+    const db = getFirestore();
+    const userDocRef = fsDoc(db, USER_DATA_COLLECTION, user.uid);
+    const docSnapshot = await getDoc(userDocRef);
 
-    if (docSnapshot.exists) {
+    if (docSnapshot.exists()) {
       const allData = docSnapshot.data();
       const userData: Record<string, any> = {};
 

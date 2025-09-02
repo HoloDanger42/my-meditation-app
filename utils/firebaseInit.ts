@@ -1,21 +1,14 @@
-import firebase from "@react-native-firebase/app";
+import { getApp } from "@react-native-firebase/app";
 
 const initializeFirebase = () => {
-  if (firebase.apps.length === 0) {
-    console.log("Initializing Firebase...");
+  // Optional: silence modular deprecation warnings from RNFirebase
+  (globalThis as any).RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 
-    // For a bare React Native project, Firebase will use the native config files
-    // (google-services.json for Android) without extra parameters
-    try {
-      // Use type assertion to satisfy TypeScript while still allowing Firebase to use native configs
-      // @ts-ignore - The empty object is valid when native configs are present, but TypeScript doesn't know this
-      firebase.initializeApp();
-      console.log("Firebase initialized successfully");
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-    }
-  } else {
-    console.log("Firebase already initialized");
+  // Access default app (auto-initialized by native google-services files)
+  try {
+    getApp();
+  } catch {
+    // If no default app yet, RNFB will lazily create one on first module use.
   }
 };
 

@@ -1,5 +1,12 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged as rnfbOnAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  FirebaseAuthTypes,
+} from "@react-native-firebase/auth";
 import { setAuthenticationState } from "../utils/secureStorage";
 
 interface AuthContextType {
@@ -19,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
 
   // Handle user state changes
-  function onAuthStateChanged(user: FirebaseAuthTypes.User | null) {
+  function handleAuthStateChanged(user: FirebaseAuthTypes.User | null) {
     console.log("Auth state changed:", user ? "User logged in" : "No user");
     setUser(user);
     setAuthenticationState(!!user);
@@ -27,11 +34,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   useEffect(() => {
-    let subscriber: (() => void) | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
+  let subscriber: (() => void) | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+  const authInstance = getAuth();
+  subscriber = rnfbOnAuthStateChanged(authInstance, handleAuthStateChanged);
 
       // Safety timeout to ensure initializing is set to false
       timeoutId = setTimeout(() => {
@@ -50,15 +58,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (subscriber) {
         subscriber(); // Unsubscribe on unmount
       }
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+  if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
   const login = async (email: string, pass: string) => {
     try {
-      await auth().signInWithEmailAndPassword(email, pass);
+      await signInWithEmailAndPassword(getAuth(), email, pass);
     } catch (error: any) {
       console.error("Login failed:", error.code, error.message);
       throw error; // Re-throw to handle in UI
@@ -67,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signup = async (email: string, pass: string) => {
     try {
-      await auth().createUserWithEmailAndPassword(email, pass);
+      await createUserWithEmailAndPassword(getAuth(), email, pass);
     } catch (error: any) {
       console.error("Signup failed:", error.code, error.message);
       throw error; // Re-throw to handle in UI
@@ -76,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     try {
-      await auth().signOut();
+      await signOut(getAuth());
     } catch (error) {
       console.error("Logout failed:", error);
       throw error;

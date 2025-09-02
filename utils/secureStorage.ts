@@ -101,8 +101,155 @@ import {
   old_readAndDecryptFromAsyncStorage,
   removeOldAsyncStorageItem,
 } from "./migrationUtils";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SyncInterface } from "./storageInterfaces";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Crypto from "expo-crypto";
+import { encode as encodeBase64, decode as decodeBase64 } from "base-64";
+import { getAuth } from "@react-native-firebase/auth";
+
+// Mutex to prevent concurrent authentication prompts
+let authMutex = Promise.resolve();
+
+/**
+ * Executes a function that requires authentication, ensuring only one
+ * such function runs at a time to prevent overlapping UI prompts.
+ */
+async function withAuthMutex<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = authMutex;
+  let release: () => void;
+  const next = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  authMutex = previous.then(() => next);
+
+  try {
+    await previous;
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
+/**
+ * Checks if the device has a screen lock (biometrics, PIN, etc.) enabled.
+ * This is crucial for storing critical data securely.
+ */
+let _LocalAuthMod: any | null = null;
+let _localAuthTried = false;
+async function getLocalAuthModule() {
+  if (_LocalAuthMod || _localAuthTried) return _LocalAuthMod;
+  _localAuthTried = true;
+  try {
+    _LocalAuthMod = await import("expo-local-authentication");
+  } catch (e) {
+    console.warn(
+      "expo-local-authentication native module not available; continuing without biometric enrollment checks."
+    );
+    _LocalAuthMod = null;
+  }
+  return _LocalAuthMod;
+}
+
+export async function isDeviceSecurityEnabled(): Promise<boolean> {
+  const mod = await getLocalAuthModule();
+  if (!mod || typeof mod.isEnrolledAsync !== "function") return false;
+  try {
+    return await mod.isEnrolledAsync();
+  } catch {
+    return false;
+  }
+}
+
+const AUDIT_LOG_KEY = "audit_logs";
+
+// Debounce config for syncing audit logs to Firestore
+const AUDIT_SYNC_DEBOUNCE_MS = 3000;
+let auditSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingAuditLogsData: any = null;
+
+function scheduleAuditLogsSync(data: any) {
+  pendingAuditLogsData = data;
+  if (auditSyncTimeout) clearTimeout(auditSyncTimeout);
+  auditSyncTimeout = setTimeout(() => {
+    if (syncProvider) {
+      syncProvider
+        .syncItem(AUDIT_LOG_KEY, pendingAuditLogsData)
+        .catch((error: any) => {
+          console.error(
+            `Background sync failed for key ${AUDIT_LOG_KEY}:`,
+            error
+          );
+        });
+    }
+    auditSyncTimeout = null;
+  }, AUDIT_SYNC_DEBOUNCE_MS);
+}
+
+/**
+ * Encrypts data for local storage in AsyncStorage.
+ */
+async function encryptForAsyncStorage(data: any): Promise<string> {
+  const jsonString = JSON.stringify(data);
+  const user = getAuth().currentUser;
+  if (!user?.uid) return jsonString; // Store plaintext if no user
+
+  const key = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    user.uid + "LOCAL_AUDIT_SECRET"
+  );
+  const simpleKey = key.split("").map((c) => c.charCodeAt(0));
+  const keyLength = simpleKey.length;
+  const result = jsonString
+    .split("")
+    .map((char, index) => {
+      const charCode = char.charCodeAt(0);
+      const keyChar = simpleKey[index % keyLength];
+      return String.fromCharCode(charCode ^ keyChar);
+    })
+    .join("");
+  return `local_enc_v1:${encodeBase64(result)}`;
+}
+
+/**
+ * Decrypts data from local storage in AsyncStorage.
+ */
+async function decryptFromAsyncStorage(encryptedData: string): Promise<any> {
+  if (!encryptedData.startsWith("local_enc_v1:")) {
+    try {
+      return JSON.parse(encryptedData); // Not encrypted or old format
+    } catch {
+      return encryptedData;
+    }
+  }
+
+  const user = getAuth().currentUser;
+  if (!user?.uid) throw new Error("Cannot decrypt: No user available.");
+
+  const base64Data = encryptedData.substring("local_enc_v1:".length);
+  const decoded = decodeBase64(base64Data);
+
+  const key = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    user.uid + "LOCAL_AUDIT_SECRET"
+  );
+  const simpleKey = key.split("").map((c) => c.charCodeAt(0));
+  const keyLength = simpleKey.length;
+
+  const decryptedString = decoded
+    .split("")
+    .map((char, index) => {
+      const charCode = char.charCodeAt(0);
+      const keyChar = simpleKey[index % keyLength];
+      return String.fromCharCode(charCode ^ keyChar);
+    })
+    .join("");
+
+  try {
+    return JSON.parse(decryptedString);
+  } catch {
+    return decryptedString;
+  }
+}
 
 /**
  * Get the data classification for a given key
@@ -208,80 +355,146 @@ export function onAuthenticated(callback: () => void): void {
  * Get item from secure storage with classification-based security
  */
 export async function getSecureItem<T>(key: string): Promise<T | null> {
-  try {
-    const classification = getDataClassification(key);
-
-    // Check authentication requirement for sensitive data
-    if (classification.requiresAuth && !isAppAuthenticated) {
-      await logDataAccess(key, "read"); // Log failed access attempt
-      console.warn(`Access denied for ${key}: Authentication required`);
+  // Special handling for audit_logs to read from AsyncStorage
+  if (key === AUDIT_LOG_KEY) {
+    try {
+      const encryptedValue = await AsyncStorage.getItem(key);
+      if (encryptedValue === null) return null;
+      return await decryptFromAsyncStorage(encryptedValue);
+    } catch (error) {
+      console.error("Failed to get audit log from AsyncStorage:", error);
       return null;
     }
+  }
 
-    const requireHardwareAuth =
-      classification.level === DataSensitivityLevel.CRITICAL;
+  const classification = getDataClassification(key);
 
-    const jsonString = await SecureStore.getItemAsync(key, {
-      requireAuthentication: requireHardwareAuth,
-    });
-
-    if (jsonString) {
-      await logDataAccess(key, "read"); // Log successful access
-      try {
-        return JSON.parse(jsonString) as T;
-      } catch (e) {
-        console.error(`Error parsing JSON for key ${key}:`, e);
-        await SecureStore.deleteItemAsync(key);
-        return null;
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error getting secure item for key ${key}:`, error);
+  // Check authentication requirement for sensitive data
+  if (classification.requiresAuth && !isAppAuthenticated) {
+    await logDataAccess(key, "read"); // Log failed access attempt
+    console.warn(`Access denied for ${key}: Authentication required`);
     return null;
   }
+
+  const requireHardwareAuth =
+    classification.level === DataSensitivityLevel.CRITICAL;
+
+  // If hardware auth is needed, wrap the call in the mutex
+  if (requireHardwareAuth) {
+    return withAuthMutex(async () => {
+      const jsonString = await SecureStore.getItemAsync(key, {
+        requireAuthentication: true,
+      });
+      if (jsonString) {
+        await logDataAccess(key, "read");
+        try {
+          return JSON.parse(jsonString) as T;
+        } catch (e) {
+          console.error(`Error parsing JSON for key ${key}:`, e);
+          await SecureStore.deleteItemAsync(key);
+          return null;
+        }
+      }
+      return null;
+    });
+  }
+
+  // For non-critical data, access directly
+  const jsonString = await SecureStore.getItemAsync(key, {
+    requireAuthentication: false,
+  });
+
+  if (jsonString) {
+    await logDataAccess(key, "read"); // Log successful access
+    try {
+      return JSON.parse(jsonString) as T;
+    } catch (e) {
+      console.error(`Error parsing JSON for key ${key}:`, e);
+      await SecureStore.deleteItemAsync(key);
+      return null;
+    }
+  }
+  return null;
 }
 
 /**
  * Set item in secure storage with classification-based security
  */
 export async function setSecureItem(key: string, data: any): Promise<void> {
-  try {
-    const classification = getDataClassification(key);
+  // Special handling for audit_logs to avoid SecureStore size limits
+  if (key === AUDIT_LOG_KEY) {
+    try {
+      if (data === null || typeof data === "undefined") {
+        await AsyncStorage.removeItem(key);
+      } else {
+        const encryptedValue = await encryptForAsyncStorage(data);
+        await AsyncStorage.setItem(key, encryptedValue);
+      }
 
-    // Check authentication requirement for sensitive data
-    if (classification.requiresAuth && !isAppAuthenticated) {
-      throw new Error(`Cannot store ${key}: Authentication required`);
-    }
-
-    // Ensure data is not null/undefined before stringifying
-    if (data === null || typeof data === undefined) {
-      console.warn(
-        `Attempted to store null/undefined for key ${key}. Removing item instead.`
-      );
-      await removeSecureItem(key);
+      // Debounced sync to Firestore for audit logs to avoid floods
+      scheduleAuditLogsSync(data);
       return;
+    } catch (error: any) {
+      console.error(
+        `Error setting audit log in AsyncStorage for key ${key}:`,
+        error
+      );
+      throw new Error("Failed to store secure data");
     }
+  }
 
-    const jsonString = JSON.stringify(data);
-    const requireHardwareAuth =
-      classification.level === DataSensitivityLevel.CRITICAL;
+  const classification = getDataClassification(key);
+  const needsHardwareAuth =
+    classification.level === DataSensitivityLevel.CRITICAL;
 
-    await SecureStore.setItemAsync(key, jsonString, {
-      requireAuthentication: requireHardwareAuth,
-    });
+  // Before saving critical data, check if a screen lock is even set up.
+  if (needsHardwareAuth) {
+    const securityEnabled = await isDeviceSecurityEnabled();
+    if (!securityEnabled) {
+      // This is where you would typically show an alert to the user.
+      // For now, we'll throw an error that can be caught by the UI.
+      throw new Error(
+        "Device screen lock is not enabled. Please set up a PIN, pattern, or biometric lock in your device settings to save sensitive data."
+      );
+    }
+  }
 
-    await logDataAccess(key, "write"); // Log successful write
+  // Check authentication requirement for sensitive data
+  if (classification.requiresAuth && !isAppAuthenticated) {
+    throw new Error(`Cannot store ${key}: Authentication required`);
+  }
 
-    // Sync the original object to Firestore if a provider is registered
-    if (syncProvider) {
-      syncProvider.syncItem(key, data).catch((error) => {
-        console.error(`Background sync failed for key ${key}:`, error);
+  // Ensure data is not null/undefined before stringifying
+  if (data === null || typeof data === undefined) {
+    console.warn(
+      `Attempted to store null/undefined for key ${key}. Removing item instead.`
+    );
+    await removeSecureItem(key);
+    return;
+  }
+
+  const jsonString = JSON.stringify(data);
+
+  // If hardware auth is needed, wrap the call in the mutex
+  if (needsHardwareAuth) {
+    await withAuthMutex(async () => {
+      await SecureStore.setItemAsync(key, jsonString, {
+        requireAuthentication: true,
       });
-    }
-  } catch (error) {
-    console.error(`Error setting secure item for key ${key}:`, error);
-    throw new Error("Failed to store secure data");
+    });
+  } else {
+    await SecureStore.setItemAsync(key, jsonString, {
+      requireAuthentication: false,
+    });
+  }
+
+  await logDataAccess(key, "write"); // Log successful write
+
+  // Sync the original object to Firestore if a provider is registered
+  if (syncProvider) {
+    syncProvider.syncItem(key, data).catch((error: any) => {
+      console.error(`Background sync failed for key ${key}:`, error);
+    });
   }
 }
 
@@ -289,13 +502,28 @@ export async function setSecureItem(key: string, data: any): Promise<void> {
  * Remove item from secure storage.
  */
 export async function removeSecureItem(key: string): Promise<void> {
+  // Special handling for audit_logs
+  if (key === AUDIT_LOG_KEY) {
+    try {
+      await AsyncStorage.removeItem(key);
+      // Debounced sync deletion
+      scheduleAuditLogsSync(null);
+    } catch (error: any) {
+      console.error(
+        `Error removing audit log from AsyncStorage for key ${key}:`,
+        error
+      );
+    }
+    return;
+  }
+
   try {
     await SecureStore.deleteItemAsync(key, {});
     await logDataAccess(key, "delete"); // Log successful deletion
 
     // Use sync provider with null to delete the field in Firestore
     if (syncProvider) {
-      syncProvider.syncItem(key, null).catch((error) => {
+      syncProvider.syncItem(key, null).catch((error: any) => {
         console.error(
           `Background sync (removal) failed for key ${key}:`,
           error
@@ -462,6 +690,9 @@ async function logDataAccess(
   action: "read" | "write" | "delete"
 ): Promise<void> {
   if (isCriticalData(key)) {
+    // Avoid recursive logging when we are updating the audit logs
+    if (key === AUDIT_LOG_KEY) return;
+
     const auditLog = {
       key,
       action,
@@ -470,11 +701,11 @@ async function logDataAccess(
     };
 
     try {
-      const existingLogs = (await getSecureItem<any[]>("audit_logs")) || [];
+      const existingLogs = (await getSecureItem<any[]>(AUDIT_LOG_KEY)) || [];
       existingLogs.unshift(auditLog);
       // Keep only last 100 audit entries
       const trimmedLogs = existingLogs.slice(0, 100);
-      await setSecureItem("audit_logs", trimmedLogs);
+      await setSecureItem(AUDIT_LOG_KEY, trimmedLogs);
     } catch (error) {
       console.error("Failed to log data access:", error);
     }

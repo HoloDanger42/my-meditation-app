@@ -1,3 +1,5 @@
+// Load RNFirebase modular migration flags early
+import "../utils/rnfbFlags";
 import { Stack, Tabs } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
