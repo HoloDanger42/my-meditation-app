@@ -46,7 +46,8 @@
           "color": "#4E9F3D"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

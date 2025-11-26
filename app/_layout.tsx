@@ -36,49 +36,51 @@ function TabsNavigator() {
           headerShown: false,
         }}
       >
+        {/* TRIAGE HOME - Voice-First Interface */}
         <Tabs.Screen
           name="index"
           options={{
-            title: "Home",
+            title: "Triage",
             tabBarIcon: ({ color }) => (
-              <Ionicons name="home-outline" size={24} color={color} />
+              <Ionicons name="mic-outline" size={28} color={color} />
             ),
           }}
         />
-        <Tabs.Screen
-          name="mood"
-          options={{
-            title: "Mood",
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="happy-outline" size={24} color={color} />
-            ),
-          }}
-        />
+
+        {/* HISTORY - Past Triage Sessions */}
         <Tabs.Screen
           name="journal"
           options={{
-            title: "Journal",
+            title: "History",
             tabBarIcon: ({ color }) => (
-              <FontAwesome name="pencil" size={22} color={color} />
+              <Ionicons name="time-outline" size={24} color={color} />
             ),
           }}
         />
-        <Tabs.Screen
-          name="meditations"
-          options={{
-            title: "Meditate",
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="leaf-outline" size={24} color={color} />
-            ),
-          }}
-        />
+
+        {/* CONNECT - Agora Video/RTM */}
         <Tabs.Screen
           name="tools"
           options={{
-            title: "Tools",
+            title: "Connect",
             tabBarIcon: ({ color }) => (
-              <Ionicons name="medical-outline" size={24} color={color} />
+              <Ionicons name="call-outline" size={24} color={color} />
             ),
+          }}
+        />
+
+        {/* DISABLED: Wellness Features */}
+        <Tabs.Screen
+          name="mood"
+          options={{
+            href: null, // Hidden from navigation
+          }}
+        />
+
+        <Tabs.Screen
+          name="meditations"
+          options={{
+            href: null, // Hidden from navigation
           }}
         />
 
