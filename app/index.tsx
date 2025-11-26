@@ -31,9 +31,12 @@ export default function TriageScreen() {
   const { theme, isDark } = useTheme();
   const [highContrast, setHighContrast] = useState(false);
   const [recordingState, setRecordingState] = useState<string>("idle");
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY, (status) => {
-    console.log("Recording status update:", status);
-  });
+  const audioRecorder = useAudioRecorder(
+    RecordingPresets.HIGH_QUALITY,
+    (status) => {
+      console.log("Recording status update:", status);
+    }
+  );
   const [status, setStatus] = useState<"idle" | "recording" | "processing">(
     "idle"
   );
@@ -97,9 +100,9 @@ export default function TriageScreen() {
       console.log("Preparing and starting recording...");
       console.log("Current recorder state:", {
         isRecording: audioRecorder.isRecording,
-        uri: audioRecorder.uri
+        uri: audioRecorder.uri,
       });
-      
+
       isRecordingRef.current = true;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       setStatus("recording");
@@ -112,17 +115,17 @@ export default function TriageScreen() {
       } catch (prepError) {
         console.log("Prepare failed or not needed:", prepError);
       }
-      
+
       console.log("Starting record...");
       await audioRecorder.record();
-      
+
       // Wait for state to update
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       console.log("After record() call:", {
         isRecording: audioRecorder.isRecording,
-        uri: audioRecorder.uri
-      })
+        uri: audioRecorder.uri,
+      });
 
       AccessibilityInfo.announceForAccessibility(
         "Recording started. Release to stop."
@@ -188,7 +191,7 @@ export default function TriageScreen() {
         setLastResult(result);
         setStatus("idle");
         console.log("UI updated with result, status set to idle");
-        
+
         AccessibilityInfo.announceForAccessibility(
           `Triage complete. ${result.urgency} urgency.`
         );
@@ -215,6 +218,91 @@ export default function TriageScreen() {
       }
     }
   }, [audioRecorder]);
+
+  // Extracted: button + result card components to focus UI work
+
+  function TriageButton({
+    status,
+    colors,
+    onPressIn,
+    onPressOut,
+  }: {
+    status: "idle" | "recording" | "processing";
+    colors: { button: string; border: string; buttonText: string };
+    onPressIn: () => void;
+    onPressOut: () => void;
+  }) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Hold to talk"
+        accessibilityHint="Press and hold to record. Release to stop."
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        disabled={status === "processing"}
+        style={{
+          width: "80%",
+          height: "50%",
+          borderRadius: 24,
+          backgroundColor: colors.button,
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: 4,
+          borderColor: colors.border,
+          opacity: status === "processing" ? 0.6 : 1,
+        }}
+      >
+        <Ionicons name="mic" size={64} color={colors.buttonText} />
+        <Text
+          style={{
+            color: colors.buttonText,
+            fontSize: 22,
+            fontWeight: "800",
+            marginTop: 12,
+          }}
+        >
+          {status === "recording"
+            ? "Listening..."
+            : status === "processing"
+            ? "Processing..."
+            : "HOLD TO TALK"}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  function ResultCard({
+    result,
+    colors,
+  }: {
+    result: TriageResult;
+    colors: any;
+  }) {
+    return (
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 12,
+          padding: 12,
+          backgroundColor: colors.card,
+        }}
+      >
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
+          Summary
+        </Text>
+        <Text style={{ color: colors.text, marginTop: 6 }}>
+          {result.summary}
+        </Text>
+        <Text style={{ color: colors.text, marginTop: 8 }}>
+          Urgency: {result.urgency} • Category: {result.category}
+        </Text>
+        <Text style={{ color: colors.text, marginTop: 8 }}>
+          Suggested Action: {result.suggested_action}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -244,41 +332,12 @@ export default function TriageScreen() {
       </View>
 
       <View style={{ alignItems: "center", justifyContent: "center", flex: 1 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Hold to talk"
-          accessibilityHint="Press and hold to record. Release to stop."
+        <TriageButton
+          status={status}
+          colors={colors}
           onPressIn={startRecording}
           onPressOut={stopRecording}
-          disabled={status === "processing"}
-          style={{
-            width: "80%",
-            height: "50%",
-            borderRadius: 24,
-            backgroundColor: colors.button,
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 4,
-            borderColor: colors.border,
-            opacity: status === "processing" ? 0.6 : 1,
-          }}
-        >
-          <Ionicons name="mic" size={64} color={colors.buttonText} />
-          <Text
-            style={{
-              color: colors.buttonText,
-              fontSize: 22,
-              fontWeight: "800",
-              marginTop: 12,
-            }}
-          >
-            {status === "recording"
-              ? "Listening..."
-              : status === "processing"
-              ? "Processing..."
-              : "HOLD TO TALK"}
-          </Text>
-        </Pressable>
+        />
       </View>
 
       <View style={{ gap: 12 }}>
@@ -299,32 +358,7 @@ export default function TriageScreen() {
           />
         </View>
 
-        {lastResult && (
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: 12,
-              padding: 12,
-              backgroundColor: colors.card,
-            }}
-          >
-            <Text
-              style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}
-            >
-              Summary
-            </Text>
-            <Text style={{ color: colors.text, marginTop: 6 }}>
-              {lastResult.summary}
-            </Text>
-            <Text style={{ color: colors.text, marginTop: 8 }}>
-              Urgency: {lastResult.urgency} • Category: {lastResult.category}
-            </Text>
-            <Text style={{ color: colors.text, marginTop: 8 }}>
-              Suggested Action: {lastResult.suggested_action}
-            </Text>
-          </View>
-        )}
+        {lastResult && <ResultCard result={lastResult} colors={colors} />}
       </View>
     </View>
   );
