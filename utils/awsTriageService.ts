@@ -2,6 +2,7 @@ export type TriageResult = {
   summary: string;
   urgency: "High" | "Medium" | "Low";
   category: string;
+  specialist: string;
   suggested_action: string;
 };
 
@@ -15,6 +16,7 @@ export async function processTriageAudio(
       "User reports difficulty breathing and chest tightness starting 30 minutes ago.",
     urgency: "High",
     category: "Respiratory",
+    specialist: "Pulmonologist",
     suggested_action:
       "Initiate emergency protocol and connect to a specialist.",
   };
