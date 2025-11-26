@@ -31,8 +31,41 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
+
+# Android
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/local.properties
+*.iml
+
+# iOS
+ios/Pods/
+ios/build/
+*.xcworkspace
+!default.xcworkspace
+*.xcuserdata
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# AWS credentials (important!)
+aws-credentials.json
+credentials.json
+
+# Build artifacts
+*.apk
+*.ipa
+*.aab
 
 app-example
