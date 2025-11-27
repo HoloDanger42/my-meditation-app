@@ -14,6 +14,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useFonts } from "expo-font";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "expo-router";
 
 interface PatientCard {
   id: string;
@@ -45,14 +47,64 @@ export default function ProviderDashboard() {
     "Arboria-Medium": require("../assets/fonts/Arboria-Medium.ttf"),
   });
 
-  if (!fontsLoaded) {
-    return null;
-  }
-
   // API Configuration
   const STATUS_CHECK_URL =
     "https://4lfbz4mx6rede2zhzllbptkkjq0myzfs.lambda-url.us-east-1.on.aws";
   const POLL_INTERVAL = 2000; // 2 seconds
+
+  // Load patient data helper function
+  const loadPatientData = async () => {
+    const mockData: PatientCard[] = [
+      {
+        id: "1",
+        name: "Maria Santos",
+        age: 42,
+        urgency: "High",
+        timestamp: "10 secs ago",
+        specialties: ["Neurological", "Neurologist"],
+        symptoms:
+          "Acute onset of severe, retro-orbital headache, concurrent with blurry vision, dizziness, and subjective difficulty breathing.",
+        urgencyScore: "8/10",
+        urgencyDescription:
+          "Sudden onset of severe neurological symptoms (headache, vision changes) paired with reported respiratory distress is highly indicative of a time-sensitive neurovascular event (e.g., CVA) or severe systemic crisis.",
+        suggestedActions: [
+          "Immediate EMS activation and transfer to Emergency Department (ED).",
+          "Request immediate BP and SpO2 readings if caregiver present.",
+          "Screen for focal neurological deficits (e.g., facial asymmetry, unilateral limb drift).",
+        ],
+        status: "completed",
+      },
+    ];
+
+    // Check for latest triage result
+    try {
+      const latestResult = await AsyncStorage.getItem("latest_triage_result");
+      if (latestResult) {
+        const newPatient = JSON.parse(latestResult);
+        // Calculate time ago
+        const timestamp = new Date(newPatient.timestamp);
+        const now = new Date();
+        const diffSeconds = Math.floor(
+          (now.getTime() - timestamp.getTime()) / 1000
+        );
+
+        if (diffSeconds < 60) {
+          newPatient.timestamp = `${diffSeconds} secs ago`;
+        } else if (diffSeconds < 3600) {
+          newPatient.timestamp = `${Math.floor(diffSeconds / 60)} mins ago`;
+        } else {
+          newPatient.timestamp = `${Math.floor(diffSeconds / 3600)} hours ago`;
+        }
+
+        // Add to queue at the beginning
+        mockData.unshift(newPatient);
+      }
+    } catch (error) {
+      console.error("Error loading triage result:", error);
+    }
+
+    setPatientQueue(mockData);
+  };
 
   // Fetch patient status from API
   const fetchPatientStatus = async (userId: string, sessionId: string) => {
@@ -120,34 +172,72 @@ export default function ProviderDashboard() {
     return () => clearInterval(intervalId);
   }, [patientQueue]);
 
-  // Mock data - replace with actual data from your backend
-  // You can initialize this with patient data that has userId and sessionId
-  // Example: setPatientQueue([...]) after a patient uploads audio
   useEffect(() => {
-    // Initialize with mock data
-    const mockData: PatientCard[] = [
-      {
-        id: "1",
-        name: "Maria Santos",
-        age: 42,
-        urgency: "High",
-        timestamp: "10 secs ago",
-        specialties: ["Neurological", "Neurologist"],
-        symptoms:
-          "Acute onset of severe, retro-orbital headache, concurrent with blurry vision, dizziness, and subjective difficulty breathing.",
-        urgencyScore: "8/10",
-        urgencyDescription:
-          "Sudden onset of severe neurological symptoms (headache, vision changes) paired with reported respiratory distress is highly indicative of a time-sensitive neurovascular event (e.g., CVA) or severe systemic crisis.",
-        suggestedActions: [
-          "Immediate EMS activation and transfer to Emergency Department (ED).",
-          "Request immediate BP and SpO2 readings if caregiver present.",
-          "Screen for focal neurological deficits (e.g., facial asymmetry, unilateral limb drift).",
-        ],
-        status: "completed",
-      },
-    ];
-    setPatientQueue(mockData);
+    // Initialize with mock data and check for new triage results
+    const loadPatientData = async () => {
+      const mockData: PatientCard[] = [
+        {
+          id: "1",
+          name: "Maria Santos",
+          age: 42,
+          urgency: "High",
+          timestamp: "10 secs ago",
+          specialties: ["Neurological", "Neurologist"],
+          symptoms:
+            "Acute onset of severe, retro-orbital headache, concurrent with blurry vision, dizziness, and subjective difficulty breathing.",
+          urgencyScore: "8/10",
+          urgencyDescription:
+            "Sudden onset of severe neurological symptoms (headache, vision changes) paired with reported respiratory distress is highly indicative of a time-sensitive neurovascular event (e.g., CVA) or severe systemic crisis.",
+          suggestedActions: [
+            "Immediate EMS activation and transfer to Emergency Department (ED).",
+            "Request immediate BP and SpO2 readings if caregiver present.",
+            "Screen for focal neurological deficits (e.g., facial asymmetry, unilateral limb drift).",
+          ],
+          status: "completed",
+        },
+      ];
+
+      // Check for latest triage result
+      try {
+        const latestResult = await AsyncStorage.getItem("latest_triage_result");
+        if (latestResult) {
+          const newPatient = JSON.parse(latestResult);
+          // Calculate time ago
+          const timestamp = new Date(newPatient.timestamp);
+          const now = new Date();
+          const diffSeconds = Math.floor(
+            (now.getTime() - timestamp.getTime()) / 1000
+          );
+
+          if (diffSeconds < 60) {
+            newPatient.timestamp = `${diffSeconds} secs ago`;
+          } else if (diffSeconds < 3600) {
+            newPatient.timestamp = `${Math.floor(diffSeconds / 60)} mins ago`;
+          } else {
+            newPatient.timestamp = `${Math.floor(
+              diffSeconds / 3600
+            )} hours ago`;
+          }
+
+          // Add to queue at the beginning
+          mockData.unshift(newPatient);
+        }
+      } catch (error) {
+        console.error("Error loading triage result:", error);
+      }
+
+      setPatientQueue(mockData);
+    };
+
+    loadPatientData();
   }, []);
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadPatientData();
+    }, [])
+  );
 
   const providerInfo = {
     name: "Jose Rizal",
@@ -156,16 +246,9 @@ export default function ProviderDashboard() {
     notificationCount: 0,
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "High":
-        return "#FE805D";
-      case "Medium":
-        return "#FFA500";
-      default:
-        return "#7EFD94";
-    }
-  };
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const styles = StyleSheet.create({
     container: {

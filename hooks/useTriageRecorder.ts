@@ -9,6 +9,7 @@ import {
 } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { processTriageAudio } from "../utils/awsTriageService";
+import { useAuth } from "../context/AuthContext";
 
 export type TriageResult = {
   summary: string;
@@ -21,9 +22,8 @@ export type TriageResult = {
 type TriageStatus = "idle" | "recording" | "processing";
 
 export function useTriageRecorder() {
-  const audioRecorder = useAudioRecorder(
-    RecordingPresets.HIGH_QUALITY
-  );
+  const { user } = useAuth();
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const [status, setStatus] = useState<TriageStatus>("idle");
   const [lastResult, setLastResult] = useState<TriageResult | null>(null);
@@ -97,7 +97,7 @@ export function useTriageRecorder() {
         );
       }
     })();
-  }, [ensurePermissions, audioRecorder, status]);
+  }, [ensurePermissions, audioRecorder, status, user]);
 
   const stopRecording = useCallback(() => {
     if (!isRecordingRef.current) {
@@ -133,18 +133,51 @@ export function useTriageRecorder() {
         setStatus("processing");
 
         try {
-          const result = await processTriageAudio(uri);
+          // Use a mock user ID for prototype
+          const userId = user?.uid || "prototype-user-123";
+
+          const result = await processTriageAudio(uri, userId);
 
           if (!isMounted.current) return;
 
           setStatus("idle");
           setLastResult(result);
 
+          // Save to AsyncStorage for doctor dashboard to pick up
+          const patientData = {
+            id: `triage_${Date.now()}`,
+            userId: userId,
+            sessionId: `session_${Date.now()}`,
+            name: "Patient", // In real app, would come from user profile
+            age: 0, // In real app, would come from user profile
+            urgency: result.urgency,
+            timestamp: new Date().toISOString(),
+            specialties: [result.category, result.specialist],
+            symptoms: result.summary,
+            urgencyScore:
+              result.urgency === "High"
+                ? "8/10"
+                : result.urgency === "Medium"
+                ? "5/10"
+                : "2/10",
+            urgencyDescription: result.summary,
+            suggestedActions: [result.suggested_action],
+            status: "completed",
+          };
+
+          // Store in AsyncStorage
+          await AsyncStorage.setItem(
+            "latest_triage_result",
+            JSON.stringify(patientData)
+          );
+
           AccessibilityInfo.announceForAccessibility(
             `Triage complete. ${result.urgency} urgency. Routed to ${result.specialist}.`
           );
         } catch (err) {
           console.error("Processing error:", err);
+
+          // Save for offline sync
           const item = {
             id: `triage_${Date.now()}`,
             type: "audio_recording",
@@ -166,7 +199,7 @@ export function useTriageRecorder() {
         }
       }
     })();
-  }, [audioRecorder]);
+  }, [audioRecorder, user]);
 
   return {
     status,

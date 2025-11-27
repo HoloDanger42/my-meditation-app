@@ -1,5 +1,3 @@
-import { getAuth } from "@react-native-firebase/auth";
-
 export type TriageResult = {
   summary: string;
   urgency: "High" | "Medium" | "Low";
@@ -138,28 +136,40 @@ async function pollForResults(
         // Lambda #3 returns "data" field, not "result"
         const rawResult = data.result || data.data;
         console.log("✅ Triage result received:", rawResult);
-        
+
         // Parse result if it's a JSON string
         let result = rawResult;
-        if (typeof result === 'string') {
+        if (typeof result === "string") {
           try {
             result = JSON.parse(result);
           } catch (e) {
-            console.error('Failed to parse result JSON:', e);
+            console.error("Failed to parse result JSON:", e);
           }
         }
-        
+
         // Map Lambda #3 format to app's TriageResult format
         const mappedResult: TriageResult = {
-          summary: result.clinical_summary?.symptoms || result.summary || "Symptoms analyzed",
-          urgency: result.risk_assessment?.urgency_label?.includes("High") ? "High" 
-                 : result.risk_assessment?.urgency_label?.includes("Medium") ? "Medium"
-                 : result.urgency || "Low",
-          category: result.clinical_summary?.category || result.category || "General",
-          specialist: result.clinical_summary?.specialist_label || result.specialist || "General Practitioner",
-          suggested_action: result.suggested_actions?.[0] || result.suggested_action || "Seek medical advice",
+          summary:
+            result.clinical_summary?.symptoms ||
+            result.summary ||
+            "Symptoms analyzed",
+          urgency: result.risk_assessment?.urgency_label?.includes("High")
+            ? "High"
+            : result.risk_assessment?.urgency_label?.includes("Medium")
+            ? "Medium"
+            : result.urgency || "Low",
+          category:
+            result.clinical_summary?.category || result.category || "General",
+          specialist:
+            result.clinical_summary?.specialist_label ||
+            result.specialist ||
+            "General Practitioner",
+          suggested_action:
+            result.suggested_actions?.[0] ||
+            result.suggested_action ||
+            "Seek medical advice",
         };
-        
+
         return mappedResult;
       }
 
@@ -175,7 +185,9 @@ async function pollForResults(
     }
   }
 
-  throw new Error(`Triage result timeout after ${maxAttempts * intervalMs / 1000} seconds`);
+  throw new Error(
+    `Triage result timeout after ${(maxAttempts * intervalMs) / 1000} seconds`
+  );
 }
 
 /**
@@ -214,14 +226,11 @@ async function pollForResults(
  * - We detect format and set correct Content-Type
  */
 export async function processTriageAudio(
-  audioUri: string
+  audioUri: string,
+  userId?: string
 ): Promise<TriageResult> {
-  const auth = getAuth();
-  const user = auth.currentUser;
-
-  if (!user) {
-    throw new Error("User must be authenticated for triage");
-  }
+  // Use mock user ID for prototype if not provided
+  const finalUserId = userId || "prototype-user-123";
 
   try {
     // Detect audio format from URI
@@ -240,7 +249,7 @@ export async function processTriageAudio(
 
     // Step 1: Get presigned URL with session metadata
     const { uploadUrl, key, sessionId } = await getPresignedUploadUrl(
-      user.uid,
+      finalUserId,
       fileExtension
     );
 
@@ -248,7 +257,7 @@ export async function processTriageAudio(
     await uploadAudioToS3(uploadUrl, audioUri, contentType);
 
     // Step 3: Poll for results (backend processes via Lambda)
-    const result = await pollForResults(user.uid, sessionId);
+    const result = await pollForResults(finalUserId, sessionId);
 
     return result;
   } catch (error) {
