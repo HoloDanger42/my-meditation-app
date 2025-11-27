@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Switch,
+  Modal,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,52 +16,155 @@ import { useTheme } from "../context/ThemeContext";
 
 interface PatientCard {
   id: string;
+  userId?: string;
+  sessionId?: string;
   name: string;
   age: number;
-  urgency: "Highly Urgent" | "Urgent" | "Normal";
+  urgency: "High" | "Medium" | "Low";
   timestamp: string;
   specialties: string[];
+  symptoms?: string;
+  urgencyScore?: string;
+  urgencyDescription?: string;
+  suggestedActions?: string[];
+  status?: string;
 }
 
 export default function ProviderDashboard() {
   const { theme, isDark } = useTheme();
   const [isAvailable, setIsAvailable] = useState(true);
+  const [selectedPatient, setSelectedPatient] = useState<PatientCard | null>(
+    null
+  );
+  const [patientQueue, setPatientQueue] = useState<PatientCard[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // API Configuration
+  const STATUS_CHECK_URL =
+    "https://4lfbz4mx6rede2zhzllbptkkjq0myzfs.lambda-url.us-east-1.on.aws";
+  const POLL_INTERVAL = 2000; // 2 seconds
+
+  // Fetch patient status from API
+  const fetchPatientStatus = async (userId: string, sessionId: string) => {
+    try {
+      const response = await fetch(
+        `${STATUS_CHECK_URL}?userId=${userId}&sessionId=${sessionId}`
+      );
+      const data = await response.json();
+
+      if (data.status === "completed" && data.data) {
+        return data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching patient status:", error);
+      return null;
+    }
+  };
+
+  // Poll for updates on pending patients
+  useEffect(() => {
+    const pollPatients = async () => {
+      // Get all patients that need polling (those with userId and sessionId)
+      const pendingPatients = patientQueue.filter(
+        (patient) =>
+          patient.userId && patient.sessionId && patient.status !== "completed"
+      );
+
+      for (const patient of pendingPatients) {
+        const updatedData = await fetchPatientStatus(
+          patient.userId!,
+          patient.sessionId!
+        );
+
+        if (updatedData) {
+          // Update patient with API data
+          setPatientQueue((prev) =>
+            prev.map((p) =>
+              p.id === patient.id
+                ? {
+                    ...p,
+                    urgency: updatedData.urgency || p.urgency,
+                    symptoms: updatedData.symptoms || p.symptoms,
+                    urgencyScore: updatedData.urgencyScore || p.urgencyScore,
+                    urgencyDescription:
+                      updatedData.urgencyDescription || p.urgencyDescription,
+                    suggestedActions:
+                      updatedData.suggestedActions || p.suggestedActions,
+                    specialties: updatedData.specialties || p.specialties,
+                    status: "completed",
+                  }
+                : p
+            )
+          );
+        }
+      }
+    };
+
+    // Poll every 2 seconds if there are pending patients
+    const intervalId = setInterval(pollPatients, POLL_INTERVAL);
+
+    // Initial poll
+    pollPatients();
+
+    return () => clearInterval(intervalId);
+  }, [patientQueue]);
 
   // Mock data - replace with actual data from your backend
-  const patientQueue: PatientCard[] = [
-    {
-      id: "1",
-      name: "Maria Santos",
-      age: 42,
-      urgency: "Highly Urgent",
-      timestamp: "10 secs ago",
-      specialties: ["Neurological", "Neurologist"],
-    },
-    {
-      id: "2",
-      name: "Maria Santos",
-      age: 42,
-      urgency: "Highly Urgent",
-      timestamp: "10 secs ago",
-      specialties: ["Neurological", "Neurologist"],
-    },
-    {
-      id: "3",
-      name: "Maria Santos",
-      age: 42,
-      urgency: "Highly Urgent",
-      timestamp: "10 secs ago",
-      specialties: ["Neurological", "Neurologist"],
-    },
-    {
-      id: "4",
-      name: "Maria Santos",
-      age: 42,
-      urgency: "Highly Urgent",
-      timestamp: "10 secs ago",
-      specialties: ["Neurological", "Neurologist"],
-    },
-  ];
+  // You can initialize this with patient data that has userId and sessionId
+  // Example: setPatientQueue([...]) after a patient uploads audio
+  useEffect(() => {
+    // Initialize with mock data
+    const mockData: PatientCard[] = [
+      {
+        id: "1",
+        name: "Maria Santos",
+        age: 42,
+        urgency: "High",
+        timestamp: "10 secs ago",
+        specialties: ["Neurological", "Neurologist"],
+        symptoms:
+          "Acute onset of severe, retro-orbital headache, concurrent with blurry vision, dizziness, and subjective difficulty breathing.",
+        urgencyScore: "8/10",
+        urgencyDescription:
+          "Sudden onset of severe neurological symptoms (headache, vision changes) paired with reported respiratory distress is highly indicative of a time-sensitive neurovascular event (e.g., CVA) or severe systemic crisis.",
+        suggestedActions: [
+          "Immediate EMS activation and transfer to Emergency Department (ED).",
+          "Request immediate BP and SpO2 readings if caregiver present.",
+          "Screen for focal neurological deficits (e.g., facial asymmetry, unilateral limb drift).",
+        ],
+        status: "completed",
+      },
+      {
+        id: "2",
+        name: "John Anderson",
+        age: 58,
+        urgency: "High",
+        timestamp: "2 mins ago",
+        specialties: ["Neurological", "Neurologist"],
+        status: "completed",
+      },
+      {
+        id: "3",
+        name: "Sarah Chen",
+        age: 34,
+        urgency: "Medium",
+        timestamp: "5 mins ago",
+        specialties: ["Neurological", "Neurologist"],
+        status: "completed",
+      },
+      {
+        id: "4",
+        name: "Robert Williams",
+        age: 67,
+        urgency: "Low",
+        timestamp: "8 mins ago",
+        specialties: ["Neurological", "Neurologist"],
+        status: "completed",
+      },
+    ];
+    setPatientQueue(mockData);
+  }, []);
 
   const providerInfo = {
     name: "Jose Rizal",
@@ -71,12 +175,12 @@ export default function ProviderDashboard() {
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case "Highly Urgent":
-        return "#FF6B6B";
-      case "Urgent":
+      case "High":
+        return "#FE805D";
+      case "Medium":
         return "#FFA500";
       default:
-        return "#4CAF50";
+        return "#7EFD94";
     }
   };
 
@@ -181,7 +285,7 @@ export default function ProviderDashboard() {
       width: 12,
       height: 12,
       borderRadius: 6,
-      backgroundColor: "#4CAF50",
+      backgroundColor: "#7EFD94",
       marginRight: 10,
     },
     availabilityText: {
@@ -283,6 +387,93 @@ export default function ProviderDashboard() {
       fontWeight: "500",
       color: "#fff",
     },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: "#fff",
+      borderRadius: 20,
+      padding: 24,
+      width: "100%",
+      maxHeight: "90%",
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 20,
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "#f5f5f5",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalPatientInfo: {
+      flex: 1,
+      marginRight: 12,
+    },
+    modalPatientName: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: "#1a1a1a",
+      marginBottom: 4,
+    },
+    modalPatientAge: {
+      fontSize: 14,
+      color: "#666",
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#1a1a1a",
+      marginTop: 20,
+      marginBottom: 8,
+    },
+    sectionContent: {
+      fontSize: 14,
+      color: "#333",
+      lineHeight: 20,
+      marginBottom: 16,
+    },
+    urgencyScoreBadge: {
+      backgroundColor: "#FE805D",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      alignSelf: "flex-start",
+      marginVertical: 8,
+    },
+    urgencyScoreText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#fff",
+    },
+    actionItem: {
+      fontSize: 14,
+      color: "#333",
+      lineHeight: 20,
+      marginBottom: 8,
+    },
+    callNowButton: {
+      backgroundColor: "#7EFD94",
+      borderRadius: 12,
+      padding: 16,
+      alignItems: "center",
+      marginTop: 20,
+    },
+    callNowText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#fff",
+    },
   });
 
   return (
@@ -332,7 +523,7 @@ export default function ProviderDashboard() {
             <View
               style={[
                 styles.availabilityDot,
-                { backgroundColor: isAvailable ? "#4CAF50" : "#999" },
+                { backgroundColor: isAvailable ? "#7EFD94" : "#999" },
               ]}
             />
             <Text style={styles.availabilityText}>Available</Text>
@@ -342,7 +533,7 @@ export default function ProviderDashboard() {
               value={isAvailable}
               onValueChange={setIsAvailable}
               trackColor={{ false: "#d1d1d1", true: "#A5D6A7" }}
-              thumbColor={isAvailable ? "#4CAF50" : "#f4f3f4"}
+              thumbColor={isAvailable ? "#7EFD94" : "#f4f3f4"}
               ios_backgroundColor="#d1d1d1"
             />
           </View>
@@ -368,7 +559,11 @@ export default function ProviderDashboard() {
         showsVerticalScrollIndicator={false}
       >
         {patientQueue.map((patient) => (
-          <TouchableOpacity key={patient.id} activeOpacity={0.7}>
+          <TouchableOpacity
+            key={patient.id}
+            activeOpacity={0.7}
+            onPress={() => setSelectedPatient(patient)}
+          >
             <View style={styles.patientCard}>
               {/* Urgency and timestamp */}
               <View style={styles.urgencyRow}>
@@ -419,6 +614,116 @@ export default function ProviderDashboard() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Patient Detail Modal */}
+      <Modal
+        visible={selectedPatient !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedPatient(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selectedPatient && (
+              <>
+                {/* Header */}
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalPatientInfo}>
+                    <View
+                      style={[
+                        styles.urgencyBadge,
+                        {
+                          backgroundColor: getUrgencyColor(
+                            selectedPatient.urgency
+                          ),
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="warning"
+                        size={14}
+                        color="#fff"
+                        style={styles.urgencyIcon}
+                      />
+                      <Text style={styles.urgencyText}>
+                        {selectedPatient.urgency}
+                      </Text>
+                    </View>
+                    <Text style={styles.modalPatientName}>
+                      {selectedPatient.name}
+                    </Text>
+                    <Text style={styles.modalPatientAge}>
+                      {selectedPatient.age} years old
+                    </Text>
+                    <View style={styles.specialtyRow}>
+                      {selectedPatient.specialties.map((specialty, index) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.specialtyBadge,
+                            {
+                              backgroundColor:
+                                index === 0 ? "#8B5CF6" : "#5B8DEE",
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="medical"
+                            size={12}
+                            color="#fff"
+                            style={styles.specialtyIcon}
+                          />
+                          <Text style={styles.specialtyText}>{specialty}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setSelectedPatient(null)}
+                  >
+                    <Ionicons name="close" size={20} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* Symptoms */}
+                  <Text style={styles.sectionTitle}>Symptoms</Text>
+                  <Text style={styles.sectionContent}>
+                    {selectedPatient.symptoms}
+                  </Text>
+
+                  {/* Urgency */}
+                  <Text style={styles.sectionTitle}>Urgency</Text>
+                  {selectedPatient.urgencyScore && (
+                    <View style={styles.urgencyScoreBadge}>
+                      <Text style={styles.urgencyScoreText}>
+                        {selectedPatient.urgencyScore}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.sectionContent}>
+                    {selectedPatient.urgencyDescription}
+                  </Text>
+
+                  {/* Suggested Action */}
+                  <Text style={styles.sectionTitle}>Suggested Action</Text>
+                  {selectedPatient.suggestedActions?.map((action, index) => (
+                    <Text key={index} style={styles.actionItem}>
+                      {index + 1}. {action}
+                    </Text>
+                  ))}
+
+                  {/* Call Now Button */}
+                  <TouchableOpacity style={styles.callNowButton}>
+                    <Text style={styles.callNowText}>Call Now</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
