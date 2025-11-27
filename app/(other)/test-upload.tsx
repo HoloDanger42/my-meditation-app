@@ -8,15 +8,25 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { verifyUplink, VerificationResult } from '../../utils/__tests__/verifyUplink';
+import { verifyUplink, VerificationResult } from '../../utils/verifyUplink';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
+import { processTriageAudio } from '../../utils/awsTriageService';
 
 export default function TestUploadScreen() {
   const { theme } = useTheme();
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(null);
+  
+  // Real recording state
+  const [userId, setUserId] = useState('user123');
+  const [sessionId, setSessionId] = useState('session-chest-test');
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
 
   const runTest = async () => {
     setTesting(true);
@@ -49,6 +59,81 @@ export default function TestUploadScreen() {
     return passed ? '#4CAF50' : '#FF4444';
   };
 
+  const startRealRecording = async () => {
+    try {
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(rec);
+      setIsRecording(true);
+      setUploadResult(null);
+    } catch (err: any) {
+      setUploadResult(`❌ Record failed: ${err.message}`);
+    }
+  };
+
+  const stopAndUpload = async () => {
+    if (!recording) return;
+
+    try {
+      setIsRecording(false);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      
+      if (!uri) {
+        setUploadResult('❌ No audio URI');
+        return;
+      }
+
+      setUploading(true);
+      setUploadResult('⏳ Uploading...');
+
+      // Manual upload for testing with custom session ID
+      const API_ENDPOINT = process.env.EXPO_PUBLIC_API_ENDPOINT;
+      if (!API_ENDPOINT) {
+        throw new Error('API_ENDPOINT not configured');
+      }
+
+      // Get presigned URL
+      const response = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, sessionId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Presigned URL failed: ${response.status}`);
+      }
+
+      const { uploadUrl } = await response.json();
+
+      // Upload audio
+      const audioBlob = await fetch(uri).then(r => r.blob());
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'audio/mp4' },
+        body: audioBlob,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 upload failed: ${uploadResponse.status}`);
+      }
+      
+      setUploadResult(`✅ Uploaded to s3://triage-recordings/${userId}/${sessionId}.m4a`);
+      setRecording(null);
+    } catch (err: any) {
+      setUploadResult(`❌ Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.background }}
@@ -61,6 +146,7 @@ export default function TestUploadScreen() {
             color: theme.text,
             fontSize: 24,
             fontWeight: '800',
+            marginTop: 40,
             marginBottom: 8,
           }}
         >
@@ -72,7 +158,101 @@ export default function TestUploadScreen() {
         </Text>
       </View>
 
-      {/* Test Button */}
+      {/* Real Recording Section */}
+      <View
+        style={{
+          backgroundColor: theme.card,
+          padding: 20,
+          borderRadius: 12,
+          marginBottom: 20,
+          borderWidth: 2,
+          borderColor: '#FF6B6B',
+        }}
+      >
+        <Text
+          style={{
+            color: theme.text,
+            fontSize: 18,
+            fontWeight: '800',
+            marginBottom: 12,
+          }}
+        >
+          🎤 Record & Upload Real Audio
+        </Text>
+
+        <TextInput
+          value={userId}
+          onChangeText={setUserId}
+          placeholder="User ID"
+          placeholderTextColor={theme.textTertiary}
+          style={{
+            backgroundColor: theme.background,
+            color: theme.text,
+            padding: 12,
+            borderRadius: 8,
+            marginBottom: 8,
+            fontSize: 14,
+          }}
+        />
+
+        <TextInput
+          value={sessionId}
+          onChangeText={setSessionId}
+          placeholder="Session ID"
+          placeholderTextColor={theme.textTertiary}
+          style={{
+            backgroundColor: theme.background,
+            color: theme.text,
+            padding: 12,
+            borderRadius: 8,
+            marginBottom: 16,
+            fontSize: 14,
+          }}
+        />
+
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Pressable
+            onPress={isRecording ? stopAndUpload : startRealRecording}
+            disabled={uploading}
+            style={{
+              flex: 1,
+              backgroundColor: isRecording ? '#FF4444' : '#4CAF50',
+              padding: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <Ionicons
+              name={isRecording ? 'stop' : 'mic'}
+              size={24}
+              color="#FFF"
+            />
+            <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>
+              {isRecording ? 'Stop & Upload' : 'Record'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {uploadResult && (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 12,
+              backgroundColor: theme.background,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ color: theme.text, fontSize: 14 }}>
+              {uploadResult}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Verification Test Button */}
       <Pressable
         onPress={runTest}
         disabled={testing}
@@ -98,7 +278,7 @@ export default function TestUploadScreen() {
           <>
             <Ionicons name="flash" size={24} color="#FFF" />
             <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>
-              Run Verification Test
+              Run Verification Test (Synthetic)
             </Text>
           </>
         )}

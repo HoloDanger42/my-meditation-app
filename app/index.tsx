@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { View, Text, Switch, ScrollView } from "react-native";
+import { View, Text, Switch, ScrollView, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 import { useTriageRecorder } from "../hooks/useTriageRecorder";
 import { useTriageAnimations } from "../hooks/useTriageAnimations";
 import { TriageButton } from "../components/TriageButton";
@@ -12,6 +13,7 @@ import { getTriageColors } from "../utils/triageColors";
 export default function TriageScreen() {
   const { theme, isDark } = useTheme();
   const [highContrast, setHighContrast] = useState(false);
+  const router = useRouter();
 
   const { status, lastResult, startRecording, stopRecording } =
     useTriageRecorder();
@@ -76,6 +78,25 @@ export default function TriageScreen() {
 
         {/* Bottom Section */}
         <View style={{ gap: 16 }}>
+          {/* Test Upload Button (Temporary - Delete after Day 2) */}
+          <Pressable
+            onPress={() => router.push('/(other)/test-upload')}
+            style={{
+              backgroundColor: '#FF6B6B',
+              padding: 16,
+              borderRadius: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+            }}
+          >
+            <Ionicons name="flask" size={24} color="#FFF" />
+            <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>
+              🧪 Test Upload Pipeline
+            </Text>
+          </Pressable>
+
           {/* High Contrast Toggle */}
           <View
             style={{

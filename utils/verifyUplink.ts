@@ -48,10 +48,17 @@ export async function verifyUplink(): Promise<VerificationResult> {
     console.log('🔐 Step 1: Checking user ID...');
     
     const auth = getAuth();
-    const user = auth.currentUser;
+    let user = auth.currentUser;
+    
+    // HACKATHON FIX: Auto sign-in anonymously for testing
+    if (!user) {
+      console.log('⚠️ No user found, signing in anonymously...');
+      await auth.signInAnonymously();
+      user = auth.currentUser;
+    }
     
     if (!user) {
-      throw new Error('User not authenticated. Please sign in first.');
+      throw new Error('Failed to authenticate. Check Firebase configuration.');
     }
     
     result.steps.auth = true;
@@ -81,7 +88,7 @@ export async function verifyUplink(): Promise<VerificationResult> {
     console.log('\n📝 Step 3: Requesting Presigned Upload URL...');
     
     const presignedResponse = await fetch(
-      `${API_ENDPOINT}/triage/presigned-upload`,
+      API_ENDPOINT,
       {
         method: 'POST',
         headers: {
@@ -103,7 +110,10 @@ export async function verifyUplink(): Promise<VerificationResult> {
     }
 
     const presignedData = await presignedResponse.json();
-    const { uploadUrl, key, sessionId } = presignedData;
+    console.log('📦 Lambda response:', JSON.stringify(presignedData, null, 2));
+    
+    const { uploadUrl, s3Key, sessionId } = presignedData;
+    const key = s3Key; // Lambda returns s3Key, not key
 
     if (!uploadUrl || !key || !sessionId) {
       throw new Error('Invalid presigned URL response. Missing required fields.');

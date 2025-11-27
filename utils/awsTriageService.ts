@@ -15,11 +15,13 @@ export type TriageResult = {
  * 3. Backend validates token + generates presigned S3 URL
  * 4. Upload audio to S3 with presigned URL
  * 5. Backend processes via EventBridge/S3 trigger
- * 
+ *
  * NEVER embed AWS credentials in the app!
  */
 
-const API_ENDPOINT = process.env.EXPO_PUBLIC_API_ENDPOINT || "https://your-api.execute-api.us-east-1.amazonaws.com";
+const API_ENDPOINT =
+  process.env.EXPO_PUBLIC_API_ENDPOINT ||
+  "https://your-api.execute-api.us-east-1.amazonaws.com";
 
 interface PresignedUploadResponse {
   uploadUrl: string;
@@ -35,7 +37,7 @@ interface TranscriptionResult {
 /**
  * Step 1: Request a presigned URL from your secure backend
  * Backend holds the AWS credentials, not the app
- * 
+ *
  * HACKATHON MODE: Using "Gentleman's Security"
  * - Sending userId in body (no Firebase token validation)
  * - Production would validate Firebase ID token on backend
@@ -44,7 +46,7 @@ async function getPresignedUploadUrl(
   userId: string,
   fileExtension: string
 ): Promise<PresignedUploadResponse> {
-  const response = await fetch(`${API_ENDPOINT}/triage/presigned-upload`, {
+  const response = await fetch(API_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -91,14 +93,14 @@ async function uploadAudioToS3(
 
 /**
  * Step 3: Poll for results or wait for Agora RTM message
- * 
+ *
  * IMPLEMENTATION OPTIONS:
- * 
+ *
  * A) Polling (Current - Works for hackathon):
  *    - Client polls every 1 second
  *    - Simple, no extra dependencies
  *    - ~30-60 second total latency
- * 
+ *
  * B) Agora RTM Push (Day 2 - Real-time):
  *    - Backend pushes result via Agora RTM
  *    - Client receives message instantly
@@ -110,9 +112,7 @@ async function pollForResults(
   maxAttempts = 30
 ): Promise<TriageResult> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const response = await fetch(
-      `${API_ENDPOINT}/triage/result/${sessionId}`
-    );
+    const response = await fetch(`${API_ENDPOINT}/triage/result/${sessionId}`);
 
     if (response.ok) {
       const result = await response.json();
@@ -130,15 +130,15 @@ async function pollForResults(
 
 /**
  * Step 3B: Listen for Agora RTM result (Alternative to polling)
- * 
+ *
  * USAGE (Day 2 implementation):
- * 
+ *
  * import { agoraRTMClient } from '../utils/agoraRTM';
- * 
+ *
  * // Replace pollForResults() with:
  * const result = await new Promise<TriageResult>((resolve, reject) => {
  *   const timeout = setTimeout(() => reject(new Error("Timeout")), 30000);
- *   
+ *
  *   agoraRTMClient.on('MessageFromPeer', (message, peerId) => {
  *     if (message.text.includes(sessionId)) {
  *       clearTimeout(timeout);
@@ -147,7 +147,7 @@ async function pollForResults(
  *     }
  *   });
  * });
- * 
+ *
  * Backend Lambda must send via Agora SDK:
  * await agoraClient.sendMessageToPeer(
  *   { text: JSON.stringify({ sessionId, data: triageResult }) },
@@ -157,7 +157,7 @@ async function pollForResults(
 
 /**
  * Main entry point: Secure end-to-end triage processing
- * 
+ *
  * Audio Format Handling:
  * - Expo Audio on Android outputs: .m4a (AAC) or .3gp
  * - AWS Transcribe accepts: FLAC, MP3, MP4, Ogg, WebM, AMR, WAV
@@ -203,7 +203,7 @@ export async function processTriageAudio(
     return result;
   } catch (error) {
     console.error("Triage processing failed:", error);
-    
+
     // Fallback: Mock result for development
     if (__DEV__) {
       await new Promise((r) => setTimeout(r, 2000));
@@ -215,14 +215,14 @@ export async function processTriageAudio(
         suggested_action: "Schedule appointment within 24 hours.",
       };
     }
-    
+
     throw error;
   }
 }
 
 /**
  * BACKEND IMPLEMENTATION CHECKLIST:
- * 
+ *
  * 1. Lambda Function: POST /triage/presigned-upload
  *    - Validate Firebase ID token
  *    - Generate unique sessionId (UUID)
@@ -230,25 +230,25 @@ export async function processTriageAudio(
  *    - Generate presigned PUT URL (5 min expiry)
  *    - Store metadata in DynamoDB: { sessionId, userId, timestamp, status: "pending" }
  *    - Return { uploadUrl, key, sessionId }
- * 
+ *
  * 2. S3 Event Trigger → Lambda: Process Upload
  *    - Extract userId/sessionId from S3 key
  *    - Start AWS Transcribe job with medical vocabulary
  *    - Update DynamoDB: status = "transcribing"
- * 
+ *
  * 3. EventBridge Rule → Lambda: On Transcribe Complete
  *    - Fetch transcript from S3
  *    - Call AWS Bedrock (Claude) with medical triage prompt
  *    - Parse urgency/category/specialist from LLM response
  *    - Update DynamoDB: status = "completed", result = {...}
  *    - Optionally: Send push notification via FCM
- * 
+ *
  * 4. Lambda Function: GET /triage/result/{sessionId}
  *    - Validate Firebase ID token
  *    - Query DynamoDB for sessionId
  *    - Verify userId matches token
  *    - Return { status, data }
- * 
+ *
  * SECURITY NOTES:
  * - S3 bucket must have public access BLOCKED
  * - Presigned URLs expire after 5 minutes
