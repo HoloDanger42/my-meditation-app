@@ -17,6 +17,7 @@ Zenith is a React Native + Expo application that helps users build sustainable m
 
 ## ✨ Features
 
+- **Voice-First Clinical Triage**: Hold-to-talk interface for symptom reporting with AI-powered urgency assessment and specialist routing (see `ARCHITECTURE.md` for security details).
 - **Guided Meditations**: Structured session data sourced from `data/meditationsData.ts`.
 - **Breathing Tools**: Interactive timed breathing and history (`tools/breathing*.tsx`).
 - **Mood Tracking**: Quick mood logging & historical view (`mood/`).
@@ -87,12 +88,26 @@ After native runs (`run:android` / `run:ios`), the `post-prebuild` script applie
 
 ## 🧪 Environment & Secrets
 
+### Firebase Configuration
 `eas.json` expects a secret named `GOOGLE_SERVICES_JSON` containing the raw contents of your `google-services.json`. Set it via:
 ```bash
 eas secret:create --name GOOGLE_SERVICES_JSON --value "$(cat config/google-services.json)" --type string
 ```
 
 During builds, the prebuild command writes this to `android/app/google-services.json`.
+
+### AWS Triage Service
+Create a `.env` file from the template:
+```bash
+cp .env.example .env
+```
+
+Set your API Gateway endpoint:
+```bash
+EXPO_PUBLIC_API_ENDPOINT=https://your-api.execute-api.us-east-1.amazonaws.com
+```
+
+**See `ARCHITECTURE.md` for complete AWS infrastructure setup guide.**
 
 ## 📜 Scripts
 
@@ -160,6 +175,11 @@ npx expo-doctor
 Not yet specified. If you intend to open source, add a LICENSE file (MIT recommended) and reference it here.
 
 ## ✅ Roadmap (High‑Level)
+- **Voice Triage (In Progress)**: Deploy AWS backend infrastructure (see `ARCHITECTURE.md`)
+  - [ ] Lambda functions for presigned URL generation
+  - [ ] S3 event triggers for Transcribe pipeline
+  - [ ] Bedrock integration for medical analysis
+  - [ ] Real-time result polling/webhook
 - Add biometric gate around sensitive journal/mood data
 - Expand meditation catalog & personalization engine
 - Add offline‑first sync conflict resolution
