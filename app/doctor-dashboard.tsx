@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { useFonts } from "expo-font";
 
 interface PatientCard {
   id: string;
@@ -38,6 +39,15 @@ export default function ProviderDashboard() {
   );
   const [patientQueue, setPatientQueue] = useState<PatientCard[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    "Arboria-Book": require("../assets/fonts/Arboria-Book.ttf"),
+    "Arboria-Medium": require("../assets/fonts/Arboria-Medium.ttf"),
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   // API Configuration
   const STATUS_CHECK_URL =
@@ -135,33 +145,6 @@ export default function ProviderDashboard() {
         ],
         status: "completed",
       },
-      {
-        id: "2",
-        name: "John Anderson",
-        age: 58,
-        urgency: "High",
-        timestamp: "2 mins ago",
-        specialties: ["Neurological", "Neurologist"],
-        status: "completed",
-      },
-      {
-        id: "3",
-        name: "Sarah Chen",
-        age: 34,
-        urgency: "Medium",
-        timestamp: "5 mins ago",
-        specialties: ["Neurological", "Neurologist"],
-        status: "completed",
-      },
-      {
-        id: "4",
-        name: "Robert Williams",
-        age: 67,
-        urgency: "Low",
-        timestamp: "8 mins ago",
-        specialties: ["Neurological", "Neurologist"],
-        status: "completed",
-      },
     ];
     setPatientQueue(mockData);
   }, []);
@@ -217,7 +200,7 @@ export default function ProviderDashboard() {
     },
     avatarText: {
       fontSize: 20,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#8B5CF6",
     },
     providerDetails: {
@@ -225,12 +208,13 @@ export default function ProviderDashboard() {
     },
     providerName: {
       fontSize: 18,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#1a1a1a",
       marginBottom: 2,
     },
     providerSpecialty: {
       fontSize: 14,
+      fontFamily: "Arboria-Book",
       color: "#4a4a4a",
     },
     notificationBadge: {
@@ -256,12 +240,13 @@ export default function ProviderDashboard() {
     },
     welcomeTitle: {
       fontSize: 32,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#1a1a1a",
       marginBottom: 4,
     },
     welcomeSubtitle: {
       fontSize: 15,
+      fontFamily: "Arboria-Book",
       color: "#4a4a4a",
     },
     availabilityCard: {
@@ -290,7 +275,7 @@ export default function ProviderDashboard() {
     },
     availabilityText: {
       fontSize: 16,
-      fontWeight: "600",
+      fontFamily: "Arboria-Medium",
       color: "#1a1a1a",
     },
     switchContainer: {
@@ -311,8 +296,8 @@ export default function ProviderDashboard() {
     },
     sortText: {
       fontSize: 14,
+      fontFamily: "Arboria-Book",
       color: "#666",
-      fontWeight: "500",
     },
     queueContainer: {
       flex: 1,
@@ -338,30 +323,30 @@ export default function ProviderDashboard() {
     urgencyBadge: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 8,
+      alignSelf: "flex-start",
     },
     urgencyIcon: {
-      marginRight: 6,
+      marginRight: 12,
     },
     urgencyText: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: "#fff",
+      fontSize: 16,
+      fontFamily: "Arboria-Medium",
+      color: "#FE805D",
     },
     timestamp: {
       fontSize: 12,
+      fontFamily: "Arboria-Book",
       color: "#999",
     },
     patientName: {
       fontSize: 20,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#1a1a1a",
       marginBottom: 4,
     },
     patientAge: {
       fontSize: 14,
+      fontFamily: "Arboria-Book",
       color: "#666",
       marginBottom: 12,
     },
@@ -384,7 +369,7 @@ export default function ProviderDashboard() {
     },
     specialtyText: {
       fontSize: 13,
-      fontWeight: "500",
+      fontFamily: "Arboria-Medium",
       color: "#fff",
     },
     modalOverlay: {
@@ -421,24 +406,26 @@ export default function ProviderDashboard() {
     },
     modalPatientName: {
       fontSize: 24,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#1a1a1a",
       marginBottom: 4,
     },
     modalPatientAge: {
       fontSize: 14,
+      fontFamily: "Arboria-Book",
       color: "#666",
       marginBottom: 12,
     },
     sectionTitle: {
       fontSize: 16,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#1a1a1a",
       marginTop: 20,
       marginBottom: 8,
     },
     sectionContent: {
       fontSize: 14,
+      fontFamily: "Arboria-Book",
       color: "#333",
       lineHeight: 20,
       marginBottom: 16,
@@ -453,11 +440,12 @@ export default function ProviderDashboard() {
     },
     urgencyScoreText: {
       fontSize: 14,
-      fontWeight: "600",
+      fontFamily: "Arboria-Medium",
       color: "#fff",
     },
     actionItem: {
       fontSize: 14,
+      fontFamily: "Arboria-Book",
       color: "#333",
       lineHeight: 20,
       marginBottom: 8,
@@ -471,7 +459,7 @@ export default function ProviderDashboard() {
     },
     callNowText: {
       fontSize: 16,
-      fontWeight: "bold",
+      fontFamily: "Arboria-Medium",
       color: "#fff",
     },
   });
@@ -482,9 +470,9 @@ export default function ProviderDashboard() {
 
       {/* Header with gradient */}
       <LinearGradient
-        colors={["#C8E6C9", "#E8F5E9", "#f5f5f5"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={["#C8E6C9", "#E8D5F5"]}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
         style={styles.gradient}
       >
         {/* Top bar with provider info */}
@@ -567,19 +555,14 @@ export default function ProviderDashboard() {
             <View style={styles.patientCard}>
               {/* Urgency and timestamp */}
               <View style={styles.urgencyRow}>
-                <View
-                  style={[
-                    styles.urgencyBadge,
-                    { backgroundColor: getUrgencyColor(patient.urgency) },
-                  ]}
-                >
+                <View style={styles.urgencyBadge}>
                   <Ionicons
                     name="warning"
-                    size={14}
-                    color="#fff"
+                    size={20}
+                    color="#FE805D"
                     style={styles.urgencyIcon}
                   />
-                  <Text style={styles.urgencyText}>{patient.urgency}</Text>
+                  <Text style={styles.urgencyText}>Highly Urgent</Text>
                 </View>
                 <Text style={styles.timestamp}>{patient.timestamp}</Text>
               </View>
@@ -590,25 +573,33 @@ export default function ProviderDashboard() {
 
               {/* Specialty badges */}
               <View style={styles.specialtyRow}>
-                {patient.specialties.map((specialty, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.specialtyBadge,
-                      {
-                        backgroundColor: index === 0 ? "#8B5CF6" : "#5B8DEE",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="medical"
-                      size={12}
-                      color="#fff"
-                      style={styles.specialtyIcon}
-                    />
-                    <Text style={styles.specialtyText}>{specialty}</Text>
-                  </View>
-                ))}
+                {patient.specialties.map((specialty, index) => {
+                  const getSpecialtyIcon = (spec: string) => {
+                    if (spec.toLowerCase() === "neurological") return "pulse";
+                    if (spec.toLowerCase() === "neurologist") return "person";
+                    return "medical";
+                  };
+
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.specialtyBadge,
+                        {
+                          backgroundColor: index === 0 ? "#8B5CF6" : "#5B8DEE",
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={getSpecialtyIcon(specialty)}
+                        size={12}
+                        color="#fff"
+                        style={styles.specialtyIcon}
+                      />
+                      <Text style={styles.specialtyText}>{specialty}</Text>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           </TouchableOpacity>
@@ -629,25 +620,14 @@ export default function ProviderDashboard() {
                 {/* Header */}
                 <View style={styles.modalHeader}>
                   <View style={styles.modalPatientInfo}>
-                    <View
-                      style={[
-                        styles.urgencyBadge,
-                        {
-                          backgroundColor: getUrgencyColor(
-                            selectedPatient.urgency
-                          ),
-                        },
-                      ]}
-                    >
+                    <View style={styles.urgencyBadge}>
                       <Ionicons
                         name="warning"
-                        size={14}
-                        color="#fff"
+                        size={20}
+                        color="#FE805D"
                         style={styles.urgencyIcon}
                       />
-                      <Text style={styles.urgencyText}>
-                        {selectedPatient.urgency}
-                      </Text>
+                      <Text style={styles.urgencyText}>Highly Urgent</Text>
                     </View>
                     <Text style={styles.modalPatientName}>
                       {selectedPatient.name}
@@ -656,26 +636,38 @@ export default function ProviderDashboard() {
                       {selectedPatient.age} years old
                     </Text>
                     <View style={styles.specialtyRow}>
-                      {selectedPatient.specialties.map((specialty, index) => (
-                        <View
-                          key={index}
-                          style={[
-                            styles.specialtyBadge,
-                            {
-                              backgroundColor:
-                                index === 0 ? "#8B5CF6" : "#5B8DEE",
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name="medical"
-                            size={12}
-                            color="#fff"
-                            style={styles.specialtyIcon}
-                          />
-                          <Text style={styles.specialtyText}>{specialty}</Text>
-                        </View>
-                      ))}
+                      {selectedPatient.specialties.map((specialty, index) => {
+                        const getSpecialtyIcon = (spec: string) => {
+                          if (spec.toLowerCase() === "neurological")
+                            return "pulse";
+                          if (spec.toLowerCase() === "neurologist")
+                            return "person";
+                          return "medical";
+                        };
+
+                        return (
+                          <View
+                            key={index}
+                            style={[
+                              styles.specialtyBadge,
+                              {
+                                backgroundColor:
+                                  index === 0 ? "#8B5CF6" : "#5B8DEE",
+                              },
+                            ]}
+                          >
+                            <Ionicons
+                              name={getSpecialtyIcon(specialty)}
+                              size={12}
+                              color="#fff"
+                              style={styles.specialtyIcon}
+                            />
+                            <Text style={styles.specialtyText}>
+                              {specialty}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   </View>
                   <TouchableOpacity
