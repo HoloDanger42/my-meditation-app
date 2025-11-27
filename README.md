@@ -1,6 +1,6 @@
-# Zenith – Meditation & Wellness Companion
+# Chansey – AI-Powered Voice Triage System
 
-Zenith is a React Native + Expo application that helps users build sustainable meditation and stress‑management habits. It combines guided content, mood tracking, journaling, breathing tools, and secure analytics-backed insights — all with optional encrypted cloud sync.
+Chansey is a React Native + Expo mobile application that provides instant medical triage through voice input. Patients describe symptoms verbally, and AWS AI infrastructure (Bedrock Claude + Transcribe) analyzes urgency, routes to specialists, and enables real-time video consultation.
 
 ## Table of Contents
 1. [Features](#-features)
@@ -12,23 +12,31 @@ Zenith is a React Native + Expo application that helps users build sustainable m
 7. [Scripts](#-scripts)
 8. [Building with EAS](#-building-with-eas)
 9. [Troubleshooting](#-troubleshooting)
-10. [Data Migration](#-data-migration)
+10. [Documentation](#-documentation)
 11. [Contributing](#-contributing)
 
 ## ✨ Features
 
-- **Voice-First Clinical Triage**: Hold-to-talk interface for symptom reporting with AI-powered urgency assessment and specialist routing (see `ARCHITECTURE.md` for security details).
-- **Guided Meditations**: Structured session data sourced from `data/meditationsData.ts`.
-- **Breathing Tools**: Interactive timed breathing and history (`tools/breathing*.tsx`).
-- **Mood Tracking**: Quick mood logging & historical view (`mood/`).
-- **Journal**: Secure personal entries with create/view flows (`journal/`).
-- **Statistics Dashboard**: Streaks, aggregated durations, mood trends via `react-native-gifted-charts`.
-- **Onboarding Flow**: First‑launch detection routes users to a welcome experience.
-- **Secure Local Storage**: Sensitivity‑classified data uses `expo-secure-store`; lower sensitivity uses `@react-native-async-storage/async-storage`.
-- **Encrypted Cloud Sync (Optional)**: Firebase Auth + Firestore with per‑user AES‑256 encryption fallback to a lightweight XOR scheme (see `utils/firestoreSync.ts`).
-- **Automatic Data Migrations**: Runs at startup via `runDataMigrationIfNeeded`.
-- **Dark / Light Theme**: Theme context with adaptive status bar.
-- **Biometric Gate (Planned)**: Hooks in place for secure unlocking (see usage of Secure Store & notifications settings).
+### Core Triage System
+- **Voice-First Interface**: Hold-to-talk symptom capture with real-time recording (see `hooks/useTriageRecorder.ts`)
+- **AI-Powered Analysis**: AWS Bedrock Claude evaluates urgency (High/Medium/Low) and recommends specialist routing
+- **GHOST_EAR Mode**: Production-ready bypass of AWS Transcribe (hardcoded transcript) for immediate Bedrock analysis
+- **Instant Results**: 4-10 second latency from recording to diagnosis display via polling (Lambda #3)
+- **Doctor Dashboard Integration**: REST API for web team to fetch patient triage results (see `docs/STEP_2_WEB_TEAM_DATA.md`)
+- **Video Consultation Ready**: Agora integration points for specialist calls (see `docs/STEP_3_CALL_SPECIALIST.md`)
+
+### Infrastructure
+- **AWS Lambda Pipeline**: 
+  - Lambda #1: Presigned S3 upload URL generator (ChanseyApprover)
+  - Lambda #2: S3 → Bedrock analysis processor (ChanseyAudioTrigger)
+  - Lambda #3: Result polling endpoint (ChanseyResultReader)
+- **DynamoDB Sessions**: Tracks triage status, transcripts, and AI diagnoses with 30-day TTL
+- **Firebase Auth**: Anonymous sign-in for hackathon; production supports full user accounts
+- **Secure Storage**: Zero AWS credentials in client; presigned URLs for all S3 operations
+
+### Legacy Wellness Features (Inactive)
+- Guided meditations, mood tracking, journaling (retained in codebase but not primary focus)
+- Theme context with dark/light modes
 
 ## 🛠️ Tech Stack
 
@@ -45,23 +53,44 @@ Zenith is a React Native + Expo application that helps users build sustainable m
 
 ## 🧱 Architecture Overview
 
-- **Entry Point**: `app/_layout.tsx` sets up Auth & Theme providers, splash handling, first‑launch logic, and initial sync trigger.
-- **Routing**: Folder structure under `app/` maps directly to routes (Expo Router). Grouped routes `(auth)` and `(other)` are hidden from the tab bar.
-- **Context**: `context/AuthContext.tsx` & `context/ThemeContext.tsx` supply user/session and theming state.
-- **Sync Layer**: `utils/firestoreSync.ts` encrypts and syncs user documents in the `user_data` Firestore collection.
-- **Data Classification**: Secure vs non-secure storage abstractions funnel through a sync provider registration model.
-- **Migrations**: `runDataMigrationIfNeeded` ensures legacy formats are upgraded before normal usage.
-- **Scripts Automation**: Post‑prebuild modifications handled by `scripts/post-prebuild.js` (e.g., adjusting native config after `expo prebuild`).
+### Mobile App (React Native + Expo)
+- **Entry Point**: `app/_layout.tsx` sets up Auth & Theme providers, splash handling
+- **Triage Screen**: `app/index.tsx` with hold-to-record button (see `components/TriageButton.tsx`)
+- **Recording Hook**: `hooks/useTriageRecorder.ts` manages audio capture → upload → polling loop
+- **AWS Service**: `utils/awsTriageService.ts` handles presigned URL fetch, S3 PUT upload, and result polling
+- **Result Display**: `components/ResultCard.tsx` shows AI diagnosis with urgency-based styling
+- **Routing**: Expo Router file-based navigation; `(auth)` and `(other)` groups hidden from tabs
+
+### Backend (AWS Serverless)
+- **Lambda #1 (ChanseyApprover)**: Generates presigned S3 upload URLs, creates DynamoDB session records
+- **Lambda #2 (ChanseyAudioTrigger)**: S3 event trigger → GHOST_EAR transcript → Bedrock Claude analysis → DynamoDB update
+- **Lambda #3 (ChanseyResultReader)**: GET endpoint for polling triage results by userId + sessionId
+- **S3 Buckets**: `triage-recordings` (audio uploads), `triage-transcripts` (Transcribe output - unused with GHOST_EAR)
+- **DynamoDB**: `TriageSessions` table with PK=USER#{uid}, SK=SESSION#{sessionId}
+
+**Full pipeline documentation:** See `docs/ARCHITECTURE.md`, `docs/LAMBDA_TEMPLATES.md`
 
 ## 🔐 Data Security & Privacy
 
-Firestore sync uses a hybrid approach:
-- **AES‑256‑CBC Encryption**: Native path via `react-native-aes-crypto` with PBKDF2 (10k iterations, SHA‑256) and per‑user key derivation (UID + salt).
-- **Fallback Simple Encryption**: Lightweight XOR + Base64 when native crypto isn’t available (e.g. Expo Go constraints).
-- **Plaintext Marking**: If all encryption fails, data stored with `plain:` prefix for graceful degradation.
-- **Prefixes**: `aes:`, `simple:`, `plain:` identify storage format.
+### Triage Pipeline Security
+- **Zero Client Credentials**: No AWS keys in mobile app; all operations use presigned URLs
+- **Presigned S3 Uploads**: 5-minute expiry PUT URLs generated by Lambda #1
+- **Firebase Auth**: Anonymous sign-in for hackathon; production requires verified user accounts
+- **DynamoDB Access Control**: IAM role policies enforce user data isolation (PK scoped to USER#{uid})
+- **HIPAA Considerations**: Current setup is **NOT HIPAA-compliant**; production requires:
+  - AWS BAA (Business Associate Agreement)
+  - Encryption at rest (enabled) and in transit (TLS)
+  - Audit logging via CloudTrail
+  - PHI access controls and retention policies
 
-This design aims for defense‑in‑depth while maintaining operability on constrained runtimes. Do **not** treat fallback encryption as robust security; it is best‑effort obfuscation. For full security guarantees, ship production builds (not Expo Go) and avoid storing highly sensitive data remotely.
+### "Gentleman's Security" (Hackathon Mode)
+- Lambda #1 trusts userId in request body without Firebase token validation
+- Production upgrade path: Validate `Authorization: Bearer <firebase-token>` header server-side
+
+### Legacy Wellness Data Encryption
+- AES-256-CBC via `react-native-aes-crypto` for journal/mood data (inactive features)
+- Fallback XOR obfuscation for Expo Go compatibility
+- See `utils/firestoreSync.ts` for implementation details
 
 ## 🚀 Setup & Development
 
@@ -102,12 +131,19 @@ Create a `.env` file from the template:
 cp .env.example .env
 ```
 
-Set your API Gateway endpoint:
+Set your Lambda Function URLs:
 ```bash
-EXPO_PUBLIC_API_ENDPOINT=https://your-api.execute-api.us-east-1.amazonaws.com
+# Lambda #1: Presigned upload URL generator
+EXPO_PUBLIC_API_ENDPOINT=https://abc123.lambda-url.us-east-1.on.aws
+
+# Lambda #3: Result polling endpoint
+EXPO_PUBLIC_READER_ENDPOINT=https://xyz789.lambda-url.us-east-1.on.aws
 ```
 
-**See `ARCHITECTURE.md` for complete AWS infrastructure setup guide.**
+**Lambda deployment guides:**
+- Backend infrastructure: `docs/LAMBDA_TEMPLATES.md`
+- Result reader setup: `docs/LAMBDA_3_READER.md`
+- Architecture overview: `docs/ARCHITECTURE.md`
 
 ## 📜 Scripts
 
@@ -160,11 +196,24 @@ npm install
 npx expo-doctor
 ```
 
-## 🔄 Data Migration
-`runDataMigrationIfNeeded` executes early in `_layout.tsx` to upgrade legacy storage formats. To add a new migration:
-1. Create a migration routine under `utils/migrationUtils.ts`.
-2. Register it in the migration dispatcher maintaining idempotency.
-3. Bump an internal version marker so the routine only runs once.
+## 📚 Documentation
+
+All guides moved to `docs/` folder:
+
+### Backend Setup
+- **`docs/LAMBDA_TEMPLATES.md`**: Copy-paste Lambda code for all three functions
+- **`docs/LAMBDA_3_READER.md`**: Detailed ChanseyResultReader deployment steps
+- **`docs/ARCHITECTURE.md`**: Complete AWS infrastructure diagram and security design
+
+### Integration Guides
+- **`docs/STEP_1_BRAIN_CONNECTION.md`**: Test mobile app → polling → diagnosis display
+- **`docs/STEP_2_WEB_TEAM_DATA.md`**: API docs for web dashboard team
+- **`docs/STEP_3_CALL_SPECIALIST.md`**: Agora video call integration instructions
+
+### Other
+- **`docs/QUICK_REFERENCE.md`**: Common commands and troubleshooting
+- **`docs/FLOW_DIAGRAM.md`**: Visual pipeline flow
+- **`docs/IMPLEMENTATION_SUMMARY.md`**: Feature completion status
 
 ## 🤝 Contributing
 1. Fork & branch: `git checkout -b feature/<name>`
@@ -174,17 +223,31 @@ npx expo-doctor
 ## 📄 License
 Not yet specified. If you intend to open source, add a LICENSE file (MIT recommended) and reference it here.
 
-## ✅ Roadmap (High‑Level)
-- **Voice Triage (In Progress)**: Deploy AWS backend infrastructure (see `ARCHITECTURE.md`)
-  - [ ] Lambda functions for presigned URL generation
-  - [ ] S3 event triggers for Transcribe pipeline
-  - [ ] Bedrock integration for medical analysis
-  - [ ] Real-time result polling/webhook
-- Add biometric gate around sensitive journal/mood data
-- Expand meditation catalog & personalization engine
-- Add offline‑first sync conflict resolution
-- Improve encryption key rotation strategy
-- Introduce push notification reminders / streak motivators
+## ✅ Current Status (Hackathon Build)
+
+### Completed
+- ✅ Voice recording with hold-to-talk interface
+- ✅ AWS Lambda pipeline (presigned upload + Bedrock analysis + result reader)
+- ✅ GHOST_EAR bypass (immediate AI analysis without waiting for Transcribe)
+- ✅ DynamoDB session tracking with 30-day TTL
+- ✅ Polling-based result retrieval (4-10 second latency)
+- ✅ High-contrast accessibility mode
+- ✅ Urgency-based diagnosis cards (High/Medium/Low)
+
+### In Progress
+- ⏳ Web dashboard API integration (share Lambda #3 URL with web team)
+- ⏳ "Call Specialist" button with Agora video integration
+- ⏳ Demo video recording (3 scenarios: happy path, offline sync, high urgency)
+
+### Production Roadmap
+- [ ] Replace GHOST_EAR with real AWS Transcribe integration
+- [ ] Firebase token validation in Lambda #1 (remove "gentleman's security")
+- [ ] Agora RTM real-time push (replace polling for <3 second latency)
+- [ ] HIPAA compliance audit (BAA, CloudTrail logging, PHI retention policies)
+- [ ] Biometric authentication for patient data access
+- [ ] Offline-first sync with conflict resolution
+- [ ] Push notifications for high-urgency triage results
 
 ---
-If you encounter an issue not covered above, open one with logs from the failing build phase (Gradle or Metro output). Happy calming! 🧘‍♂️
+
+**Questions?** Check `docs/` folder for detailed setup guides. For backend issues, review CloudWatch logs for Lambda functions. For mobile debugging, run `npx expo start` and check Metro bundler output. 🚑

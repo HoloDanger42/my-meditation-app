@@ -23,6 +23,10 @@ const API_ENDPOINT =
   process.env.EXPO_PUBLIC_API_ENDPOINT ||
   "https://your-api.execute-api.us-east-1.amazonaws.com";
 
+const READER_ENDPOINT =
+  process.env.EXPO_PUBLIC_READER_ENDPOINT ||
+  "https://your-reader.lambda-url.us-east-1.on.aws";
+
 interface PresignedUploadResponse {
   uploadUrl: string;
   key: string; // S3 object key for tracking
@@ -97,9 +101,9 @@ async function uploadAudioToS3(
  * IMPLEMENTATION OPTIONS:
  *
  * A) Polling (Current - Works for hackathon):
- *    - Client polls every 1 second
+ *    - Client polls ChanseyReader (Lambda #3) every 2 seconds
  *    - Simple, no extra dependencies
- *    - ~30-60 second total latency
+ *    - ~4-10 second total latency (acceptable for demo)
  *
  * B) Agora RTM Push (Day 2 - Real-time):
  *    - Backend pushes result via Agora RTM
@@ -108,24 +112,70 @@ async function uploadAudioToS3(
  *    - See utils/agoraRTM.ts for integration
  */
 async function pollForResults(
+  userId: string,
   sessionId: string,
-  maxAttempts = 30
+  maxAttempts = 30,
+  intervalMs = 2000
 ): Promise<TriageResult> {
+  console.log(`Starting poll for session ${sessionId}...`);
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const response = await fetch(`${API_ENDPOINT}/triage/result/${sessionId}`);
+    try {
+      const response = await fetch(
+        `${READER_ENDPOINT}?userId=${userId}&sessionId=${sessionId}`
+      );
 
-    if (response.ok) {
-      const result = await response.json();
-      if (result.status === "completed") {
-        return result.data;
+      if (!response.ok) {
+        console.warn(`Poll attempt ${attempt + 1} failed: ${response.status}`);
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        continue;
       }
-    }
 
-    // Wait 1 second before next poll
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      const data = await response.json();
+      console.log(`Poll attempt ${attempt + 1}: status = ${data.status}`);
+
+      if (data.status === "completed" && (data.result || data.data)) {
+        // Lambda #3 returns "data" field, not "result"
+        const rawResult = data.result || data.data;
+        console.log("✅ Triage result received:", rawResult);
+        
+        // Parse result if it's a JSON string
+        let result = rawResult;
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result);
+          } catch (e) {
+            console.error('Failed to parse result JSON:', e);
+          }
+        }
+        
+        // Map Lambda #3 format to app's TriageResult format
+        const mappedResult: TriageResult = {
+          summary: result.clinical_summary?.symptoms || result.summary || "Symptoms analyzed",
+          urgency: result.risk_assessment?.urgency_label?.includes("High") ? "High" 
+                 : result.risk_assessment?.urgency_label?.includes("Medium") ? "Medium"
+                 : result.urgency || "Low",
+          category: result.clinical_summary?.category || result.category || "General",
+          specialist: result.clinical_summary?.specialist_label || result.specialist || "General Practitioner",
+          suggested_action: result.suggested_actions?.[0] || result.suggested_action || "Seek medical advice",
+        };
+        
+        return mappedResult;
+      }
+
+      if (data.status === "failed") {
+        throw new Error("Triage processing failed on backend");
+      }
+
+      // Wait before next attempt
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    } catch (error) {
+      console.error(`Poll error on attempt ${attempt + 1}:`, error);
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
   }
 
-  throw new Error("Triage processing timed out");
+  throw new Error(`Triage result timeout after ${maxAttempts * intervalMs / 1000} seconds`);
 }
 
 /**
@@ -198,7 +248,7 @@ export async function processTriageAudio(
     await uploadAudioToS3(uploadUrl, audioUri, contentType);
 
     // Step 3: Poll for results (backend processes via Lambda)
-    const result = await pollForResults(sessionId);
+    const result = await pollForResults(user.uid, sessionId);
 
     return result;
   } catch (error) {
